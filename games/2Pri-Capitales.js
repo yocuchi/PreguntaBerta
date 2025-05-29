@@ -29,4 +29,4 @@ const prefijoPregunta = "¿Cuál es la capital de"; // Prefijo de la pregunta
 const sufijoPregunta = "?"; // Sufijo de la pregunta
 const curso = "2ºPrimaria";
 const descripcion = "Preguntas sobre las capitales de Europa";
-const tipoJuego = "preguntas"; // Puede ser "preguntas" o "tablaperiodica" 
+const tipoJuego = "preguntas"; // Puede ser "preguntas" o "tablaperiodica"  o "Formulacion"
