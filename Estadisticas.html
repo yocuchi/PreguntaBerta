@@ -1,0 +1,102 @@
+<!-- Start Generation Here -->
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estadísticas del Quiz</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        let db;
+        let request = indexedDB.open("ResultadosQuiz", 1);
+
+        request.onsuccess = function(event) {
+            db = event.target.result;
+            mostrarEstadisticas();
+        };
+
+        request.onerror = function(event) {
+            console.error("Error al abrir la base de datos:", event.target.error);
+        };
+
+        function mostrarEstadisticas() {
+            let transaction = db.transaction(["resultados"], "readonly");
+            let objectStore = transaction.objectStore("resultados");
+            let request = objectStore.getAll();
+
+            request.onsuccess = function(event) {
+                let resultados = event.target.result;
+                let contenedor = $('#contenedor');
+                contenedor.empty();
+
+                if (resultados.length > 0) {
+                    resultados.forEach(resultado => {
+                        contenedor.append(`
+                            <div class="card">
+                                <h5>${resultado.usuario}</h5>
+                                <p>Aciertos: ${resultado.aciertos}</p>
+                                <p>Fallos: ${resultado.fallos}</p>
+                            </div>
+                        `);
+                    });
+                } else {
+                    contenedor.append('<p>No hay estadísticas disponibles.</p>');
+                }
+            };
+        }
+
+        function resetearResultados() {
+            let transaction = db.transaction(["resultados"], "readwrite");
+            let objectStore = transaction.objectStore("resultados");
+            objectStore.clear(); // Elimina todos los resultados
+
+            transaction.onsuccess = function() {
+                mostrarEstadisticas(); // Actualiza la vista después de resetear
+            };
+
+            transaction.onerror = function(event) {
+                console.error("Error al resetear los resultados:", event.target.error);
+            };
+        }
+    </script>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background-color: #333;
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin: 10px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Estadísticas del Quiz</h1>
+    <div id="contenedor"></div>
+    <button class="btn btn-danger" onclick="resetearResultados()">Resetear Resultados</button>
+    <script>
+        $(document).ready(function() {
+            mostrarEstadisticas();
+        });
+    </script>
+</body>
+
+</html>
+<!-- End Generation Here -->

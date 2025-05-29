@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz de Elementos de la Tabla Periódica</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script type="text/javascript" src="elementos.js"></script>
+    <script>
+        let columnasDisponibles = [...new Set(elementos.map(elemento => elemento.columna))];
+        let preguntarValencias = true; // Variable para controlar si se preguntan valencias
+        let preguntarValenciasComoSigno = false; // Variable para controlar si se preguntan valencias como signo
+
+        function getCookie(nombre) {
+            let nombreCookie = `${nombre}=`;
+            let decodedCookie = decodeURIComponent(document.cookie);
+            let cookiesArray = decodedCookie.split(';');
+            for (let i = 0; i < cookiesArray.length; i++) {
+                let cookie = cookiesArray[i].trim();
+                if (cookie.indexOf(nombreCookie) === 0) {
+                    return cookie.substring(nombreCookie.length, cookie.length);
+                }
+            }
+            return "";
+        }
+
+        let usuarioActual = getCookie("usuario");
+        if (!usuarioActual) {
+            usuarioActual = prompt("Ingrese su nombre de usuario:");
+            document.cookie = `usuario=${usuarioActual}; path=/; max-age=31536000`;
+        }
+        
+        let resultados = {};
+        let elementoActual;
+        let totalPreguntas = 0;
+
+        mostrarConfiguracion();
+
+        function mostrarConfiguracion() {
+            let card = $(`
+                <div class="card" id="Configuracion">
+                    <h3>Configuración de Partida</h3>
+                    <label>
+                        <input type="checkbox" id="valencias-checkbox" ${preguntarValencias ? 'checked' : ''}>
+                        Preguntar por las valencias
+                    </label>
+                    <label>
+                        <input type="checkbox" id="valencias-signo-checkbox" ${preguntarValenciasComoSigno ? 'checked' : ''}>
+                        Preguntar por las valencias como signo
+                    </label>
+                    <button id="iniciar-quiz" class="btn btn-primary mt-2">Iniciar Quiz</button>
+                </div>
+            `);
+            $('#contenedor').append(card);
+
+            $('#iniciar-quiz').on('click', function() {
+                preguntarValencias = $('#valencias-checkbox').is(':checked');
+                preguntarValenciasComoSigno = $('#valencias-signo-checkbox').is(':checked');
+
+                // Modificar la matriz de elementos si no se preguntan signos
+                if (!preguntarValenciasComoSigno) {
+                    elementos.forEach(elemento => {
+                        elemento.valencias = [...new Set(elemento.valencias.replace(/[\+\-]/g, '').split(' '))].join(' ');
+                    });
+                }
+
+                $('.card').remove(); // Eliminar la tarjeta de configuración
+                mostrarBienvenida(usuarioActual);
+            });
+        }
+
+        function mostrarBienvenida(usuario) {
+            actualizarTitulo();
+            iniciarQuiz();
+        }
+
+        function actualizarTitulo() {
+            document.title = `Quiz de Elementos de la Tabla Periódica - ${usuarioActual} - Preguntas: ${totalPreguntas}/10`;
+            $('h1').text(`Bienvenido ${usuarioActual} - Preguntas: ${totalPreguntas}/10`);
+        }
+
+        function iniciarQuiz() {
+            elementoActual = seleccionarElemento();
+            if (elementoActual) {
+                mostrarFormulario(elementoActual);
+            }
+        }
+
+        function seleccionarElemento() {
+            let elemento;
+            do {
+                elemento = elementos[Math.floor(Math.random() * elementos.length)];
+            } while (resultados[elemento.nombre] && resultados[elemento.nombre].fallos > resultados[elemento.nombre].aciertos);
+            return elemento;
+        }
+
+        function mostrarFormulario(elemento) {
+            let columnasButtons = columnasDisponibles.map(columna => `
+                <button type="button" class="btn btn-secondary columna-btn" data-columna="${columna}">${columna}</button>
+            `).join('');
+            let valenciasButtons = '';
+            if (preguntarValencias) {
+                // Obtener todos los posibles valores de valencias de la matriz de elementos
+                let valencias = [...new Set(elementos.flatMap(elem => elem.valencias.split(' ')))];
+                valenciasButtons = valencias.map(valencia => `<button type="button" class="btn btn-secondary valencia-btn" data-valencia="${valencia}">${valencia}</button>`).join(' ');
+            }
+            let card = $(`
+                <div class="card" id="Pregunta">
+                    <h3>¿Qué sabes sobre ${elemento.nombre}?</h3>
+                    <form id="form-${elemento.nombre}" class="form-group">
+                        <label>Columna:</label>
+                        <div id="columnas-buttons">${columnasButtons}</div>
+                        <label>Signo:</label>
+                        <input type="text" name="signo" class="form-control" placeholder="Ejemplo: H" >
+                        <div>
+                            <h4>Valencias:</h4>
+                            <div id="valencia-buttons">${valenciasButtons}</div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-2">Enviar</button>
+                    </form>
+                </div>
+            `);
+            $('#contenedor').append(card);
+
+            $('.columna-btn').on('click', function() {
+                $('.columna-btn').removeClass('active').css('background-color', ''); // Limpiar el fondo de las columnas
+                $(this).addClass('active').css('background-color', 'orange'); // Marcar la columna seleccionada en amarillo
+            });
+
+            $('.valencia-btn').on('click', function() {
+                $(this).toggleClass('active');
+                $(this).css('background-color', $(this).hasClass('active') ? 'orange' : '');
+            });
+
+            $(`#form-${elemento.nombre}`).on('submit', function (event) {
+                event.preventDefault();
+                let columnaRespuesta = $('.columna-btn.active').data('columna');
+                verificarRespuesta(elemento, { get: (name) => name === 'columna' ? columnaRespuesta : $(this).find(`[name="${name}"]`).val() });
+            });
+        }
+
+        function verificarRespuesta(elemento, formData) {
+            let columnaRespuesta = formData.get('columna');
+            let signoRespuesta = formData.get('signo');
+
+            let valenciaElemento = elemento.valencias.toString().split(' ');
+            let aciertos = 0;
+            let totalValencias = valenciaElemento.length;
+            let mensaje = `Resultados ${elemento.nombre}: `;
+
+            if (preguntarValencias) {
+                $('.valencia-btn').each(function() {
+                    let valenciaBtn = $(this).data('valencia');
+                    if ($(this).hasClass('active')) {
+                        if (valenciaElemento.includes(valenciaBtn)) {
+                            $(this).css('background-color', 'green');
+                            aciertos += 0.33 / totalValencias; // Repartir puntos entre aciertos
+                        } else {
+                            $(this).css('background-color', 'red');
+                        }
+                    } else {
+                        if (!valenciaElemento.includes(valenciaBtn)) {
+                            $(this).css('background-color', 'yellow'); // No se seleccionó y no es correcto
+                        }
+                    }
+                });
+            }
+
+            if (columnaRespuesta && columnaRespuesta.toLowerCase() === elemento.columna.toLowerCase()) {
+                mensaje += `<span style="color: green;">Columna correcta: ${elemento.columna}</span>. `;
+                aciertos += 0.3;
+            } else {
+                mensaje += `<span style="color: red;">Columna incorrecta. La correcta es: ${elemento.columna}</span>. `;
+            }
+
+            if (signoRespuesta && signoRespuesta.toLowerCase() === elemento.signo.toLowerCase()) {
+                mensaje += `<span style="color: green;">Signo correcto: ${elemento.signo}</span>. `;
+                aciertos += 0.3;
+            } else {
+                mensaje += `<span style="color: red;">Signo incorrecto. El correcto es: ${elemento.signo}</span>. `;
+            }
+
+            if (preguntarValencias) {
+                mensaje += `<br><span style="color: blue;">Valencias del elemento: ${elemento.valencias}</span>.`;
+            }
+
+            $('.card').remove();
+            let card = $(`<div class="card"><h3>${mensaje}</h3><p>Puntuación: ${aciertos.toFixed(1)} puntos</p></div>`);
+            $('#contenedor').append(card);
+
+            totalPreguntas++;
+            actualizarTitulo();
+            iniciarQuiz();
+
+            // Llamar a actualizar resultados al final
+            actualizarResultados(elemento.nombre, columnaRespuesta && columnaRespuesta.toLowerCase() === elemento.columna.toLowerCase(), 
+                preguntarValencias && valenciaElemento.some(valencia => $('.valencia-btn[data-valencia="' + valencia + '"]').hasClass('active')), 
+                signoRespuesta && signoRespuesta.toLowerCase() === elemento.signo.toLowerCase());
+        }
+
+        // Esta función actualiza los resultados del quiz en la base de datos IndexedDB.
+        // Recibe el nombre del elemento y booleanos que indican si se acertó la columna, la valencia y el signo.
+        function actualizarResultados(nombreElemento, aciertoColumna, aciertoValencia, aciertoSigno) {
+            let db;
+            let request = indexedDB.open("ResultadosQuiz", 1);
+
+            request.onupgradeneeded = function (event) {
+                db = event.target.result;
+                db.createObjectStore("resultados", { keyPath: "nombre" });
+            };
+
+            request.onsuccess = function (event) {
+                db = event.target.result;
+                let transaction = db.transaction(["resultados"], "readwrite");
+                let store = transaction.objectStore("resultados");
+
+                store.get(nombreElemento).onsuccess = function (event) {
+                    let data = event.target.result || { 
+                        nombre: nombreElemento, 
+                        aciertos: 0, 
+                        fallos: 0, 
+                        totalPreguntado: 0, 
+                        aciertosColumna: 0, 
+                        aciertosValencia: 0, 
+                        aciertosSigno: 0, 
+                        aciertosCompletos: 0, 
+                        fecha_ultima_pregunta: new Date() 
+                    };
+
+                    // Incrementar el total de veces preguntado
+                    data.totalPreguntado++;
+
+                    // Actualizar aciertos según los resultados
+                    if (aciertoColumna) {
+                        data.aciertosColumna++;
+                    }
+                    if (aciertoValencia) {
+                        data.aciertosValencia++;
+                    }
+                    if (aciertoSigno) {
+                        data.aciertosSigno++;
+                    }
+                    if (aciertoColumna && aciertoValencia && aciertoSigno) {
+                        data.aciertosCompletos++;
+                    }
+
+                    // Actualizar aciertos y fallos
+                    if (aciertoColumna || aciertoValencia || aciertoSigno) {
+                        data.aciertos++;
+                    } else {
+                        data.fallos++;
+                    }
+
+                    data.fecha = new Date(); // Actualiza la fecha de la última pregunta
+                    store.put(data);
+
+                    // Imprimir todo el store de resultados en la consola de forma legible
+                    store.getAll().onsuccess = function(event) {
+                        const resultados = event.target.result;
+                        console.log("Resultados actuales:");
+                        resultados.forEach(resultado => {
+                            console.log(`Nombre: ${resultado.nombre}, Aciertos: ${resultado.aciertos}, Fallos: ${resultado.fallos}, Total Preguntado: ${resultado.totalPreguntado}, Aciertos Columna: ${resultado.aciertosColumna}, Aciertos Valencia: ${resultado.aciertosValencia}, Aciertos Signo: ${resultado.aciertosSigno}, Aciertos Completos: ${resultado.aciertosCompletos}, Fecha Última Pregunta: ${resultado.fecha_ultima_pregunta}`);
+                        });
+                    };
+                };
+            };
+        }
+
+        window.onload = mostrarConfiguracion;
+    </script>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background-color: #333;
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin: 10px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1,
+        p {
+            text-align: center;
+        }
+
+        .valencia-btn {
+            margin: 5px;
+        }
+
+        .valencia-btn.active {
+            background-color: orange;
+        }
+
+        .columna-btn {
+            margin: 5px;
+        }
+
+        .columna-btn.active {
+            background-color: yellow; /* Cambiado a amarillo */
+        }
+    </style>
+</head>
+
+<body>
+    <h1 id="titulo"></h1>
+    <div id="contenedor"></div>
+    <script>
+        $(document).ready(function () {
+            $('#titulo').text(`Bienvenido ${usuarioActual} - Preguntas:0/10`);
+        });
+    </script>
+    <p>Responde las preguntas sobre la valencia de los elementos.</p>
+    <button id="ver-estadisticas" class="btn btn-secondary mt-3">Ver Estadísticas</button>
+    <script>
+        $('#ver-estadisticas').on('click', function() {
+            window.open('Estadisticas.html', '_blank'); // Reemplaza 'url_de_estadisticas.html' con la URL real
+        });
+    </script>
+</body>
+
+</html>

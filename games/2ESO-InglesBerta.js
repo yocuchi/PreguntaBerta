@@ -1,0 +1,58 @@
+const preguntasJSON = [
+    { "nombre": "asustado", "respuesta": "afraid" },
+    { "nombre": "tener miedo de", "respuesta": "be afraid to" },
+    { "nombre": "enfadado", "respuesta": "angry" },
+    { "nombre": "tranquilo", "respuesta": "calm" },
+    { "nombre": "afectuoso, bondadoso", "respuesta": "caring" },
+    { "nombre": "atento, servicial", "respuesta": "helpful" },
+    { "nombre": "envidioso", "respuesta": "jealous" },
+    { "nombre": "tener envidia", "respuesta": "be jealous" },
+    { "nombre": "afortunado", "respuesta": "lucky" },
+    { "nombre": "tener suerte", "respuesta": "be lucky" },
+    { "nombre": "nervioso", "respuesta": "nervous" },
+    { "nombre": "ruidoso", "respuesta": "noisy" },
+    { "nombre": "paciente", "respuesta": "patient" },
+    { "nombre": "educado", "respuesta": "polite" },
+    { "nombre": "callado", "respuesta": "quiet" },
+    { "nombre": "digno de confianza", "respuesta": "reliable" },
+    { "nombre": "maleducado", "respuesta": "rude" },
+    { "nombre": "egoísta", "respuesta": "selfish" },
+    { "nombre": "disgustado", "respuesta": "upset" },
+    { "nombre": "preocupado", "respuesta": "worried" },
+    { "nombre": "hija", "respuesta": "daughter" },
+    { "nombre": "nietoss", "respuesta": "grandchildren" },
+    { "nombre": "nieta", "respuesta": "granddaughter" },
+    { "nombre": "abuelo", "respuesta": "grandparent" },
+    { "nombre": "nieto", "respuesta": "grandson" },
+    { "nombre": "marido, esposo", "respuesta": "husband" },
+    { "nombre": "sobrino", "respuesta": "nephew" },
+    { "nombre": "sobrina", "respuesta": "niece" },
+    { "nombre": "padre / madre", "respuesta": "parent" },
+    { "nombre": "hijo", "respuesta": "son" },
+    { "nombre": "hijastra", "respuesta": "stepdaughter" },
+    { "nombre": "padrastro", "respuesta": "stepfather" },
+    { "nombre": "madrastra", "respuesta": "stepmother" },
+    { "nombre": "hijastro", "respuesta": "stepson" },
+    { "nombre": "mujer, esposa", "respuesta": "wife" },
+    { "nombre": "nacer", "respuesta": "be born" },
+    { "nombre": "morir", "respuesta": "die" },
+    { "nombre": "enamorarse", "respuesta": "fall in love" },
+    { "nombre": "conseguir un trabajo", "respuesta": "get a job" },
+    { "nombre": "divorciarse", "respuesta": "get divorced" },
+    { "nombre": "prometerse", "respuesta": "get engaged" },
+    { "nombre": "casarse", "respuesta": "get married" },
+    { "nombre": "graduarse", "respuesta": "graduate" },
+    { "nombre": "criarse, crecer", "respuesta": "grow up" },
+    { "nombre": "tener un bebé", "respuesta": "have a baby" },
+    { "nombre": "inmigrar", "respuesta": "immigrate" },
+    { "nombre": "dejar los estudios; terminar el colegio", "respuesta": "leave school" },
+    { "nombre": "mudarse", "respuesta": "move" },
+    { "nombre": "separarse", "respuesta": "separate" }
+];
+
+const tituloJuego = "Quiz de Palabras de Inglés 2º ESO"; // Título del juego
+const prefijoPregunta = "¿Cómo se dice"; // Prefijo de la pregunta 
+const sufijoPregunta = "en inglés?"; // Sufijo de la pregunta
+const curso = "2ºESO";
+const descripcion = "Preguntas de vocabulario de inglés";
+const tipoJuego = "preguntas"; 

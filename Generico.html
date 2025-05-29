@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Titulo</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#007bff"/>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Cargar el juego dinámicamente basado en el querystring
+        function cargarJuego() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const juegoId = urlParams.get('juego') || '2Pri-Ingles'; // Si no hay juego, usar 2Pri-Ingles por defecto
+            
+            // Actualizar juegoActual globalmente
+            window.juegoActual = juegoId;
+            
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = `games/${juegoId}.js`;
+            script.onerror = () => {
+                alert('Error al cargar el juego');
+                window.location.href = 'index.html';
+            };
+            document.head.appendChild(script);
+        }
+        cargarJuego();
+    </script>
+
+    <script>
+        // Registra el Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+    </script>
+
+    <script>
+        let resultados = []; // Se inicializará en el load
+        let palabraActual;
+        let totalPreguntas = 0;
+        let numeroTotalPreguntas = 10;
+        let usuarioActual = sessionStorage.getItem('usuarioActual');
+        let palabrasUsadas = [];
+        let aciertosTotales = 0;
+        let juegoActual = window.juegoActual || '2Pri-Ingles';
+
+        // Modificar la gestión de resultados para ser específica por juego
+        function cargarResultados() {
+            console.log('Cargando resultados para juego:', juegoActual);
+            // Usar una clave específica para cada juego
+            const claveStorage = `resultados_${juegoActual}`;
+            resultados = JSON.parse(localStorage.getItem(claveStorage)) || [];
+            console.log('Resultados cargados:', resultados);
+            return resultados;
+        }
+
+        function guardarResultados(nuevosResultados) {
+            console.log('Guardando resultados para juego:', juegoActual);
+            // Usar una clave específica para cada juego
+            const claveStorage = `resultados_${juegoActual}`;
+            localStorage.setItem(claveStorage, JSON.stringify(nuevosResultados));
+            console.log('Resultados guardados:', nuevosResultados);
+        }
+
+        function preguntarNombre() {
+            if (!usuarioActual) {
+                usuarioActual = prompt("Por favor, ingresa tu nombre:");
+                sessionStorage.setItem('usuarioActual', usuarioActual); // Guardar el nombre en sesión
+            }
+            mostrarConfiguracion();
+            actualizarTitulo();
+        }
+
+        function mostrarConfiguracion() {
+            let card = $(`
+                <div class="card" id="Configuracion" style="width: 75%; margin: auto;">
+                    <h3>Configuración de Partida</h3>
+                    <div class="form-group">
+                        <label for="num-preguntas">Número de preguntas:</label>
+                        <input type="number" id="num-preguntas" class="form-control" value="10" min="1" max="50">
+                        <small class="form-text text-muted">Elige entre 1 y 50 preguntas</small>
+                    </div>
+                    <button id="iniciar-quiz" class="btn btn-primary mt-2">Iniciar Quiz</button>
+                </div>
+            `);
+            $('#contenedor').append(card);
+
+            $('#iniciar-quiz').on('click', function () {
+                let numPreguntas = parseInt($('#num-preguntas').val());
+                if (numPreguntas >= 1 && numPreguntas <= 50) {
+                    numeroTotalPreguntas = numPreguntas;
+                    $('.card').remove(); // Eliminar la tarjeta de configuración
+                    mostrarBienvenida(usuarioActual);
+                } else {
+                    alert('Por favor, elige un número de preguntas entre 1 y 50');
+                }
+            });
+        }
+
+        function mostrarBienvenida(usuario) {
+            actualizarTitulo();
+            iniciarQuiz();
+        }
+
+        function actualizarTitulo() {
+            document.title = `Quiz de Palabras de la Familia - ${usuarioActual} - Preguntas: ${totalPreguntas}/${numeroTotalPreguntas}`;
+            $('h1').text(`Bienvenido ${usuarioActual} - Preguntas: ${totalPreguntas}/${numeroTotalPreguntas}`);
+            // Agregar descripción desde el archivo JS
+            $('#descripcion').text(curso + " - " + descripcion);
+        }
+
+        function iniciarQuiz() {
+            palabraActual = seleccionarPalabra();
+            if (palabraActual) {
+                mostrarFormulario(palabraActual);
+            }
+        }
+
+        function seleccionarPalabra() {
+            let palabraSeleccionada;
+            
+            // Obtener estadísticas almacenadas
+            let resultadosGuardados = cargarResultados();
+            
+            // Crear un mapa de porcentajes de acierto por palabra
+            let porcentajesPorPalabra = {};
+            resultadosGuardados.forEach(r => {
+                porcentajesPorPalabra[r.palabra] = {
+                    porcentaje: r.porcentaje || 0,
+                    preguntas: r.preguntas || 0
+                };
+            });
+            
+            // Decidir si usar selección por dificultad (75%) o aleatoria (25%)
+            let usarDificultad = Math.random() < 0.75;
+            
+            if (usarDificultad) {
+                // Filtrar palabras que no se han usado en esta sesión
+                let palabrasDisponibles = preguntasJSON.filter(p => !palabrasUsadas.includes(p.nombre));
+                
+                // Ordenar palabras por porcentaje de acierto (menor a mayor)
+                palabrasDisponibles.sort((a, b) => {
+                    let statsA = porcentajesPorPalabra[a.nombre];
+                    let statsB = porcentajesPorPalabra[b.nombre];
+                    
+                    // Si una palabra no tiene estadísticas (nunca se ha preguntado), 
+                    // se trata como si tuviera 0% de aciertos
+                    let porcentajeA = statsA ? statsA.porcentaje : 0;
+                    let porcentajeB = statsB ? statsB.porcentaje : 0;
+                    
+                    return porcentajeA - porcentajeB;
+                });
+                
+                // Seleccionar una palabra del tercio con peor rendimiento
+                let indiceMax = Math.floor(palabrasDisponibles.length / 3);
+                if (indiceMax > 0) {
+                    palabraSeleccionada = palabrasDisponibles[Math.floor(Math.random() * indiceMax)];
+                }
+            }
+            
+            // Si no se seleccionó palabra por dificultad, usar método aleatorio original
+            if (!palabraSeleccionada) {
+                do {
+                    palabraSeleccionada = preguntasJSON[Math.floor(Math.random() * preguntasJSON.length)];
+                } while (palabrasUsadas.includes(palabraSeleccionada.nombre));
+            }
+            
+            palabrasUsadas.push(palabraSeleccionada.nombre);
+            return palabraSeleccionada;
+        }
+
+        function mostrarFormulario(palabra) {
+            // En lugar de limpiar todo el contenedor, solo limpiamos la sección de pregunta
+            $('#seccion-pregunta').remove();
+            
+            let card = $(`
+                <div class="card" id="seccion-pregunta" style="width: 75%; margin: auto; margin-top: 20px;">
+                    <h3>${prefijoPregunta} ${palabra.nombre}${sufijoPregunta}</h3>
+                    <form id="formulario-pregunta" class="form-group">
+                        <label>Respuesta:</label>
+                        <input type="text" name="traduccion" class="form-control" placeholder="Responde aqui"" autofocus autocomplete="off">
+                        <button type="button" id="btn-enviar" class="btn btn-primary mt-2">Enviar</button>
+                    </form>
+                </div>
+            `);
+            
+            // Insertamos la nueva pregunta después del resultado si existe, o al principio si no existe
+            if ($('#seccion-resultado').length) {
+                $('#seccion-resultado').after(card);
+            } else {
+                $('#contenedor').append(card);
+            }
+
+            // Establecer el foco en el campo de texto
+            $('#formulario-pregunta input[name="traduccion"]').focus();
+
+            // Función para manejar la respuesta
+            const manejarRespuesta = () => {
+                let traduccionRespuesta = $('#formulario-pregunta input[name="traduccion"]').val() || '';
+                verificarRespuesta(palabra, traduccionRespuesta);
+            };
+
+            // Vincular el evento click al botón
+            $('#btn-enviar').on('click', manejarRespuesta);
+
+            // Vincular el evento Enter al input
+            $('#formulario-pregunta input[name="traduccion"]').on('keypress', function(event) {
+                if (event.which === 13) {
+                    event.preventDefault();
+                    manejarRespuesta();
+                }
+            });
+        }
+
+        function verificarRespuesta(palabra, traduccionRespuesta) {
+            let mensaje = `Resultados para "${palabra.nombre}": `;
+            let aciertos = 0;
+
+            traduccionRespuesta = traduccionRespuesta || '';
+
+            // Obtener resultados guardados específicos del juego actual
+            let resultadosGuardados = cargarResultados();
+            let resultadoPalabra = resultadosGuardados.find(r => r.palabra === palabra.nombre);
+
+            let estadisticas = {
+                preguntas: resultadoPalabra ? resultadoPalabra.preguntas + 1 : 1,
+                aciertos: resultadoPalabra ? resultadoPalabra.aciertos : 0
+            };
+
+            totalPreguntas++;
+
+            if (traduccionRespuesta.toLowerCase() === palabra.respuesta.toLowerCase()) {
+                mensaje += `<span style="color: green;">Correcto: ${palabra.respuesta}</span>. `;
+                aciertos = 1;
+                estadisticas.aciertos++;
+                aciertosTotales++;
+            } else {
+                mensaje += `<span style="color: red;">Incorrecto: ${traduccionRespuesta || '(sin respuesta)'}</span>. La respuesta correcta es <span style="color: orange;">${palabra.respuesta}</span>.`;
+            }
+
+            let nuevoResultado = {
+                palabra: palabra.nombre,
+                respuesta: traduccionRespuesta,
+                correcto: aciertos === 1,
+                preguntas: estadisticas.preguntas,
+                aciertos: estadisticas.aciertos,
+                porcentaje: (estadisticas.aciertos / estadisticas.preguntas) * 100,
+                ultimaVez: new Date().toLocaleString()
+            };
+
+            let index = resultadosGuardados.findIndex(r => r.palabra === palabra.nombre);
+            if (index !== -1) {
+                resultadosGuardados[index] = nuevoResultado;
+            } else {
+                resultadosGuardados.push(nuevoResultado);
+            }
+
+            guardarResultados(resultadosGuardados);
+            resultados = resultadosGuardados;
+
+            mensaje += `<br/><span>Puntos: </span>${aciertosTotales}`;
+
+            $('#seccion-resultado').remove();
+            
+            let resultadoCard = $(`
+                <div class="card" id="seccion-resultado" style="width: 75%; margin: auto; margin-bottom: 20px;">
+                    <h4>${mensaje}</h4>
+                </div>
+            `);
+            $('#contenedor').prepend(resultadoCard);
+
+            setTimeout(() => {
+                if (totalPreguntas >= numeroTotalPreguntas) {
+                    $('#seccion-pregunta').remove();
+                    mostrarResultadosFinales();
+                } else {
+                    actualizarTitulo();
+                    iniciarQuiz();
+                }
+            }, 500);
+        }
+        
+        function mostrarResultadosFinales() {
+            let nota = (aciertosTotales / numeroTotalPreguntas) * 100; // Calcular nota
+            
+            // Crear la tabla de resumen de preguntas
+            let resumenPreguntas = resultados
+                .slice(-numeroTotalPreguntas) // Tomar solo las últimas preguntas de esta sesión
+                .map(r => `
+                    <tr class="text-white">
+                        <td>${r.palabra}</td>
+                        <td>${r.respuesta}</td>
+                        <td>
+                            ${r.correcto ? 
+                                `<span style="color: green;">Correcto: ${r.respuesta}</span>` : 
+                                `<span style="color: red;">Incorrecto</span>. La respuesta correcta era: <span style="color: orange;">${r.palabra}</span>`
+                            }
+                        </td>
+                    </tr>
+                `).join('');
+
+            let card = $(`
+                <div class="card bg-dark text-white" style="width: 75%; margin: auto;">
+                    <div class="card-body">
+                        <h4>Has terminado el quiz. Tu nota es: ${nota.toFixed(2)}%</h4>
+                        <div class="table-responsive mt-4">
+                            <h5>Resumen de tus respuestas:</h5>
+                            <table class="table table-dark">
+                                <thead>
+                                    <tr>
+                                        <th>Pregunta</th>
+                                        <th>Tu respuesta</th>
+                                        <th>Resultado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${resumenPreguntas}
+                                </tbody>
+                            </table>
+                        </div>
+                        <button id="reiniciar-quiz" class="btn btn-primary mt-2">Reiniciar Quiz</button>
+                    </div>
+                </div>
+            `);
+            $('#contenedor').append(card);
+
+            $('#reiniciar-quiz').on('click', function () {
+                reiniciarJuego();
+            });
+        }
+
+        function reiniciarJuego() {
+            totalPreguntas = 0;
+            aciertosTotales = 0;
+            palabrasUsadas = [];
+            resultados = cargarResultados();
+            $('#contenedor').empty(); // Limpiar el contenedor
+            preguntarNombre(); // Volver a preguntar el nombre
+        }
+
+        function mostrarEstadisticas() {
+            const resultadosGuardados = cargarResultados();
+            let resultadosAgrupados = {};
+            
+            resultadosGuardados.forEach(r => {
+                if (!resultadosAgrupados[r.palabra]) {
+                    resultadosAgrupados[r.palabra] = {
+                        preguntas: r.preguntas,
+                        aciertos: r.aciertos,
+                        porcentaje: r.porcentaje,
+                        ultimaVez: r.ultimaVez
+                    };
+                } else {
+                    resultadosAgrupados[r.palabra].preguntas = r.preguntas;
+                    resultadosAgrupados[r.palabra].aciertos = r.aciertos;
+                    resultadosAgrupados[r.palabra].porcentaje = r.porcentaje;
+                    resultadosAgrupados[r.palabra].ultimaVez = r.ultimaVez;
+                }
+            });
+
+            let resultadosHTML = `
+                <table class="table table-dark table-striped">
+                    <thead>
+                        <tr>
+                            <th>Pregunta</th>
+                            <th>Veces Preguntada</th>
+                            <th>Aciertos</th>
+                            <th>Porcentaje</th>
+                            <th>Última vez</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${Object.entries(resultadosAgrupados)
+                            .sort(([palabraA], [palabraB]) => palabraA.localeCompare(palabraB))
+                            .map(([palabra, stats]) => {
+                            const colorClass = stats.porcentaje >= 85 ? 'text-success' : 'text-danger';
+                            return `
+                                <tr>
+                                    <td>${palabra}</td>
+                                    <td>${stats.preguntas}</td>
+                                    <td>${stats.aciertos}</td>
+                                    <td class="${colorClass}">${stats.porcentaje.toFixed(2)}%</td>
+                                    <td>${stats.ultimaVez || 'No disponible'}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            let modal = $(`
+                <div class="modal" tabindex="-1" role="dialog">
+                    <div class="modal-dialog modal-lg" role="document">
+                        <div class="modal-content bg-dark text-white">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Estadísticas de ${juegoActual}</h5>
+                                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                ${resultadosHTML}
+                            </div>
+                            <div class="modal-footer">
+                                <button id="borrar-estadisticas" class="btn btn-danger">Borrar Estadísticas</button>
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `);
+            $('body').append(modal);
+            modal.modal('show');
+
+            $('#borrar-estadisticas').on('click', function () {
+                const claveStorage = `resultados_${juegoActual}`;
+                localStorage.removeItem(claveStorage);
+                resultados = [];
+                modal.modal('hide');
+                modal.remove();
+            });
+        }
+
+        window.onload = function() {
+            resultados = cargarResultados();
+            preguntarNombre();
+            $('#ver-estadisticas').on('click', function() {
+                mostrarEstadisticas();
+            });
+        };
+    </script>
+</head>
+
+<body>
+    <a href="index.html" class="btn btn-light position-fixed" style="top: 20px; left: 20px; z-index: 1000;">
+        <i class="fas fa-home"></i>
+    </a>
+    <h1 id="titulo"></h1>
+    <div id="contenedor">
+        <!-- Aquí se insertarán dinámicamente la pregunta y el resultado -->
+    </div>
+    
+    <p><div id="descripcion">Descripción del juego</div></p>
+    <button id="ver-estadisticas" class="btn btn-secondary mt-3">Ver Estadísticas</button>
+</body>
+
+</html>
