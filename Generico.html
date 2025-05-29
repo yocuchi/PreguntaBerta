@@ -20,18 +20,53 @@
             const juegoId = urlParams.get('juego') || '2Pri-Ingles'; // Si no hay juego, usar 2Pri-Ingles por defecto
             
             // Actualizar juegoActual globalmente
-            window.juegoActual = juegoId;
+            juegoActual = juegoId;
             
-            const script = document.createElement('script');
-            script.type = 'text/javascript';
-            script.src = `games/${juegoId}.js`;
-            script.onerror = () => {
-                alert('Error al cargar el juego');
-                window.location.href = 'index.html';
-            };
-            document.head.appendChild(script);
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.type = 'text/javascript';
+                script.src = `games/${juegoId}.js`;
+                script.onload = () => {
+                    // Verificar que preguntasJSON se haya cargado correctamente
+                    if (typeof preguntasJSON === 'undefined' || !preguntasJSON) {
+                        reject(new Error('preguntasJSON no se cargó correctamente'));
+                        return;
+                    }
+
+                    // Una vez cargado el script del juego, leemos sus variables globales
+                    tipoDeJuegoActual = tipoJuego || "normal"; // Asumiendo que tipoJuego está definido en el archivo JS del juego
+
+                    // Solo cargar configuraciones específicas si es juego de tabla periódica
+                    if (tipoDeJuegoActual === "tablaPeriodica") {
+                        configActualTablaPeriodica = configuracionTablaPeriodica || {};
+                        columnasJuegoActual = columnasDisponibles || [];
+                        valenciasJuegoActual = todasLasValenciasPosibles || [];
+
+                        // Modificar preguntasJSON para tabla periódica si es necesario
+                        if (!configActualTablaPeriodica.preguntarValenciasComoSimbolo) {
+                            preguntasJSON.forEach(elemento => {
+                                elemento.valenciasOriginales = elemento.valencias; // Guardar originales por si acaso
+                                elemento.valencias = [...new Set(elemento.valencias.replace(/[\\+\\-]/g, '').split(' '))].join(' ');
+                            });
+                            valenciasJuegoActual = [...new Set(valenciasJuegoActual.map(v => v.replace(/[\\+\\-]/g, '')))].sort((a,b) => parseInt(a) - parseInt(b));
+                        }
+                    } else {
+                        // Para juegos normales, inicializar variables vacías para evitar errores
+                        configActualTablaPeriodica = {};
+                        columnasJuegoActual = [];
+                        valenciasJuegoActual = [];
+                    }
+
+                    console.log("Tipo de juego cargado:", tipoDeJuegoActual);
+                    console.log("preguntasJSON cargado con", preguntasJSON.length, "preguntas");
+                    resolve();
+                };
+                script.onerror = () => {
+                    reject(new Error('Error al cargar el archivo del juego'));
+                };
+                document.head.appendChild(script);
+            });
         }
-        cargarJuego();
     </script>
 
     <script>
@@ -58,6 +93,13 @@
         let palabrasUsadas = [];
         let aciertosTotales = 0;
         let juegoActual = window.juegoActual || '2Pri-Ingles';
+        let modoJuego = 'surtido'; // 'surtido' o 'todas'
+        
+        // Variables para el tipo de juego y configuración específica
+        let tipoDeJuegoActual = ""; // Se establecerá en cargarJuego
+        let configActualTablaPeriodica = {}; // Se llenará desde el JS del juego si es tablaPeriodica
+        let columnasJuegoActual = []; // Para tablaPeriodica
+        let valenciasJuegoActual = []; // Para tablaPeriodica
 
         // Modificar la gestión de resultados para ser específica por juego
         function cargarResultados() {
@@ -80,46 +122,171 @@
         function preguntarNombre() {
             if (!usuarioActual) {
                 usuarioActual = prompt("Por favor, ingresa tu nombre:");
+                if (!usuarioActual) { // Si el prompt es cancelado o está vacío
+                    usuarioActual = "Invitado"; 
+                }
                 sessionStorage.setItem('usuarioActual', usuarioActual); // Guardar el nombre en sesión
             }
+            
+            // Establecer título inicial sin contador de preguntas
+            document.title = `Quiz de Palabras de la Familia - ${usuarioActual}`;
+            $('h1#titulo').text(`Bienvenido ${usuarioActual}`);
+            
             mostrarConfiguracion();
-            actualizarTitulo();
         }
 
         function mostrarConfiguracion() {
+            let configuracionHTML = '';
+            if (tipoDeJuegoActual === "tablaPeriodica") {
+                configuracionHTML = `
+                    <h5>Configuración Específica de Tabla Periódica:</h5>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="simbolo-checkbox" ${configActualTablaPeriodica.preguntarSimbolo ? 'checked' : ''}>
+                            Preguntar por el Símbolo
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="columna-checkbox" ${configActualTablaPeriodica.preguntarColumna ? 'checked' : ''}>
+                            Preguntar por la Columna
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="valencias-checkbox" ${configActualTablaPeriodica.preguntarValencias ? 'checked' : ''}>
+                            Preguntar por las Valencias
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="valencias-simbolo-checkbox" ${configActualTablaPeriodica.preguntarValenciasComoSimbolo ? 'checked' : ''} ${!configActualTablaPeriodica.preguntarValencias ? 'disabled' : ''}>
+                            Preguntar Valencias con signo (+/-)
+                        </label>
+                    </div>
+                    <hr/>
+                `;
+            }
+
             let card = $(`
                 <div class="card" id="Configuracion" style="width: 75%; margin: auto;">
                     <h3>Configuración de Partida</h3>
-                    <div class="form-group">
-                        <label for="num-preguntas">Número de preguntas:</label>
-                        <input type="number" id="num-preguntas" class="form-control" value="10" min="1" max="50">
-                        <small class="form-text text-muted">Elige entre 1 y 50 preguntas</small>
+                    ${configuracionHTML}
+                    <p>Elige el modo de juego:</p>
+                    <button id="modo-todas" class="btn btn-info mb-2">Todas las preguntas (${preguntasJSON.length} preguntas)</button>
+                    <button id="modo-surtido" class="btn btn-info mb-3">Surtido de preguntas</button>
+                    <div id="config-surtido" style="display: none;">
+                        <div class="form-group">
+                            <label for="num-preguntas">Número de preguntas:</label>
+                            <input type="number" id="num-preguntas" class="form-control" value="10" min="1" max="50">
+                            <small class="form-text text-muted">Elige entre 1 y  ${preguntasJSON.length} preguntas disponibles)</small>
+                        </div>
+                        <button id="iniciar-quiz-surtido" class="btn btn-primary mt-2">Iniciar Quiz con Surtido</button>
                     </div>
-                    <button id="iniciar-quiz" class="btn btn-primary mt-2">Iniciar Quiz</button>
                 </div>
             `);
             $('#contenedor').append(card);
 
-            $('#iniciar-quiz').on('click', function () {
-                let numPreguntas = parseInt($('#num-preguntas').val());
-                if (numPreguntas >= 1 && numPreguntas <= 50) {
-                    numeroTotalPreguntas = numPreguntas;
+            $('#modo-todas').on('click', function() {
+                modoJuego = 'todas';
+                numeroTotalPreguntas = preguntasJSON.length;
+                actualizarConfiguracionTablaPeriodicaDesdeUI();
+                $('.card').remove(); // Eliminar la tarjeta de configuración
+                mostrarBienvenida(usuarioActual);
+            });
+
+            $('#modo-surtido').on('click', function() {
+                modoJuego = 'surtido';
+                $('#modo-todas').hide();
+                $('#modo-surtido').hide();
+                $('#config-surtido').show();
+                // Actualizar el max del input si es necesario
+                let maxPreguntas = preguntasJSON.length > 50 ? 50 : preguntasJSON.length;
+                $('#num-preguntas').attr('max', maxPreguntas);
+                $('#num-preguntas').val(Math.min(10, maxPreguntas)); // Default a 10 o menos si no hay tantas
+                $('#config-surtido small').text(`Elige entre 1 y ${maxPreguntas} preguntas`);
+            });
+
+            $('#iniciar-quiz-surtido').on('click', function () {
+                let numPreguntasInput = parseInt($('#num-preguntas').val());
+                let maxPreguntas = parseInt($('#num-preguntas').attr('max'));
+
+                if (numPreguntasInput >= 1 && numPreguntasInput <= maxPreguntas) {
+                    numeroTotalPreguntas = numPreguntasInput;
+                    actualizarConfiguracionTablaPeriodicaDesdeUI();
                     $('.card').remove(); // Eliminar la tarjeta de configuración
                     mostrarBienvenida(usuarioActual);
                 } else {
-                    alert('Por favor, elige un número de preguntas entre 1 y 50');
+                    alert(`Por favor, elige un número de preguntas entre 1 y ${maxPreguntas}`);
                 }
             });
         }
 
+        function actualizarConfiguracionTablaPeriodicaDesdeUI() {
+            if (tipoDeJuegoActual === "tablaPeriodica") {
+                const preguntarSimbolo = $('#simbolo-checkbox').is(':checked');
+                const preguntarColumna = $('#columna-checkbox').is(':checked');
+                const preguntarVal = $('#valencias-checkbox').is(':checked');
+                const preguntarSimboloVal = $('#valencias-simbolo-checkbox').is(':checked');
+
+                // Actualizar configuración global
+                configActualTablaPeriodica.preguntarSimbolo = preguntarSimbolo;
+                configActualTablaPeriodica.preguntarColumna = preguntarColumna;
+                configActualTablaPeriodica.preguntarValencias = preguntarVal;
+
+                // Si la configuración de "preguntar valencias con signo" cambió O si se des/activó preguntar valencias
+                if (configActualTablaPeriodica.preguntarValenciasComoSimbolo !== preguntarSimboloVal || configActualTablaPeriodica.preguntarValencias !== preguntarVal) {
+                    configActualTablaPeriodica.preguntarValenciasComoSimbolo = preguntarVal && preguntarSimboloVal;
+                    
+                    // Reaplica la transformación de valencias en preguntasJSON y valenciasJuegoActual
+                    if (preguntarVal) { // Solo procesar si se preguntan valencias
+                        if (!configActualTablaPeriodica.preguntarValenciasComoSimbolo) { // Quitar signos
+                            preguntasJSON.forEach(elemento => {
+                                elemento.valencias = [...new Set((elemento.valenciasOriginales || elemento.valencias).replace(/[\\+\\-]/g, '').split(' '))].join(' ');
+                            });
+                            valenciasJuegoActual = [...new Set(todasLasValenciasPosibles.map(v => v.replace(/[\\+\\-]/g, '')))].sort((a,b) => parseInt(a) - parseInt(b));
+                        } else { // Mantener/Restaurar signos
+                            preguntasJSON.forEach(elemento => {
+                                elemento.valencias = elemento.valenciasOriginales || elemento.valencias;
+                            });
+                            valenciasJuegoActual = [...new Set(todasLasValenciasPosibles)].sort((a, b) => { 
+                                const numA = parseInt(a.replace(/[+-]/g, ''));
+                                const numB = parseInt(b.replace(/[+-]/g, ''));
+                                if (!isNaN(numA) && !isNaN(numB)) {
+                                    if (numA !== numB) return numA - numB;
+                                    if (a.includes('+') && !b.includes('+')) return -1;
+                                    if (!a.includes('+') && b.includes('+')) return 1;
+                                    if (a.includes('-') && !b.includes('-')) return 1;
+                                    if (!a.includes('-') && b.includes('-')) return -1;
+                                    return a.localeCompare(b); 
+                                }
+                                return a.localeCompare(b);
+                            });
+                        }
+                    } else {
+                        // Si no se preguntan valencias, podemos dejar las valenciasJuegoActual vacías o con las originales con signo
+                        // Esto asegura que si se vuelven a activar, tengan los valores correctos.
+                         preguntasJSON.forEach(elemento => {
+                            elemento.valencias = elemento.valenciasOriginales || elemento.valencias; // Restaurar originales por si acaso
+                        });
+                        valenciasJuegoActual = [...new Set(todasLasValenciasPosibles)].sort((a, b) => { /* Lógica de ordenación original */ });
+                    }
+                }
+                // Deshabilitar checkbox de valencia con signo si no se preguntan valencias
+                $('#valencias-simbolo-checkbox').prop('disabled', !preguntarVal);
+                if (!preguntarVal) {
+                    $('#valencias-simbolo-checkbox').prop('checked', false); // Desmarcar si está deshabilitado
+                }
+            }
+        }
+
         function mostrarBienvenida(usuario) {
-            actualizarTitulo();
             iniciarQuiz();
         }
 
         function actualizarTitulo() {
             document.title = `Quiz de Palabras de la Familia - ${usuarioActual} - Preguntas: ${totalPreguntas}/${numeroTotalPreguntas}`;
-            $('h1').text(`Bienvenido ${usuarioActual} - Preguntas: ${totalPreguntas}/${numeroTotalPreguntas}`);
+            $('h1#titulo').text(`Bienvenido ${usuarioActual} - Preguntas: ${totalPreguntas}/${numeroTotalPreguntas}`);
             // Agregar descripción desde el archivo JS
             $('#descripcion').text(curso + " - " + descripcion);
         }
@@ -134,53 +301,61 @@
         function seleccionarPalabra() {
             let palabraSeleccionada;
             
-            // Obtener estadísticas almacenadas
-            let resultadosGuardados = cargarResultados();
+            // Asegurarse de que preguntasJSON esté disponible
+            if (typeof preguntasJSON === 'undefined' || !preguntasJSON || preguntasJSON.length === 0) {
+                console.error("preguntasJSON no está definido o está vacío.");
+                alert("Error: No se pudieron cargar las preguntas del juego.");
+                return undefined;
+            }
+
+            // Filtrar palabras que no se han usado en esta sesión
+            let palabrasDisponibles = preguntasJSON.filter(p => !palabrasUsadas.includes(p.nombre));
+
+            if (palabrasDisponibles.length === 0) {
+                // Ya se usaron todas las palabras disponibles para el modo actual
+                return undefined;
+            }
             
-            // Crear un mapa de porcentajes de acierto por palabra
-            let porcentajesPorPalabra = {};
-            resultadosGuardados.forEach(r => {
-                porcentajesPorPalabra[r.palabra] = {
-                    porcentaje: r.porcentaje || 0,
-                    preguntas: r.preguntas || 0
-                };
-            });
-            
-            // Decidir si usar selección por dificultad (75%) o aleatoria (25%)
-            let usarDificultad = Math.random() < 0.75;
-            
-            if (usarDificultad) {
-                // Filtrar palabras que no se han usado en esta sesión
-                let palabrasDisponibles = preguntasJSON.filter(p => !palabrasUsadas.includes(p.nombre));
-                
-                // Ordenar palabras por porcentaje de acierto (menor a mayor)
-                palabrasDisponibles.sort((a, b) => {
-                    let statsA = porcentajesPorPalabra[a.nombre];
-                    let statsB = porcentajesPorPalabra[b.nombre];
-                    
-                    // Si una palabra no tiene estadísticas (nunca se ha preguntado), 
-                    // se trata como si tuviera 0% de aciertos
-                    let porcentajeA = statsA ? statsA.porcentaje : 0;
-                    let porcentajeB = statsB ? statsB.porcentaje : 0;
-                    
-                    return porcentajeA - porcentajeB;
+            if (modoJuego === 'todas') {
+                palabraSeleccionada = palabrasDisponibles[Math.floor(Math.random() * palabrasDisponibles.length)];
+            } else { // modoJuego === 'surtido'
+                // Obtener estadísticas almacenadas
+                let resultadosGuardados = cargarResultados();
+                let porcentajesPorPalabra = {};
+                resultadosGuardados.forEach(r => {
+                    porcentajesPorPalabra[r.palabra] = {
+                        porcentaje: r.porcentaje || 0,
+                        preguntas: r.preguntas || 0
+                    };
                 });
                 
-                // Seleccionar una palabra del tercio con peor rendimiento
-                let indiceMax = Math.floor(palabrasDisponibles.length / 3);
-                if (indiceMax > 0) {
-                    palabraSeleccionada = palabrasDisponibles[Math.floor(Math.random() * indiceMax)];
+                let usarDificultad = Math.random() < 0.75;
+                
+                if (usarDificultad) {
+                    palabrasDisponibles.sort((a, b) => {
+                        let statsA = porcentajesPorPalabra[a.nombre];
+                        let statsB = porcentajesPorPalabra[b.nombre];
+                        let porcentajeA = statsA ? statsA.porcentaje : 0;
+                        let porcentajeB = statsB ? statsB.porcentaje : 0;
+                        return porcentajeA - porcentajeB;
+                    });
+                    
+                    let indiceMax = Math.floor(palabrasDisponibles.length / 3);
+                    if (indiceMax > 0) {
+                        palabraSeleccionada = palabrasDisponibles[Math.floor(Math.random() * indiceMax)];
+                    } else { // Si no hay suficientes para el tercio, seleccionar aleatoriamente de las disponibles
+                        palabraSeleccionada = palabrasDisponibles[Math.floor(Math.random() * palabrasDisponibles.length)];
+                    }
+                }
+                
+                if (!palabraSeleccionada) {
+                    palabraSeleccionada = palabrasDisponibles[Math.floor(Math.random() * palabrasDisponibles.length)];
                 }
             }
             
-            // Si no se seleccionó palabra por dificultad, usar método aleatorio original
-            if (!palabraSeleccionada) {
-                do {
-                    palabraSeleccionada = preguntasJSON[Math.floor(Math.random() * preguntasJSON.length)];
-                } while (palabrasUsadas.includes(palabraSeleccionada.nombre));
+            if (palabraSeleccionada) {
+                palabrasUsadas.push(palabraSeleccionada.nombre);
             }
-            
-            palabrasUsadas.push(palabraSeleccionada.nombre);
             return palabraSeleccionada;
         }
 
@@ -188,14 +363,74 @@
             // En lugar de limpiar todo el contenedor, solo limpiamos la sección de pregunta
             $('#seccion-pregunta').remove();
             
+            let contenidoFormulario = '';
+            let camposPreguntados = 0; // Contador para saber cuántos campos se preguntan
+
+            if (tipoDeJuegoActual === "tablaPeriodica") {
+                const elemento = palabra; // Renombrar para claridad
+                
+                if (configActualTablaPeriodica.preguntarColumna) {
+                    camposPreguntados++;
+                    let columnasButtons = columnasJuegoActual.map(columna => `
+                        <button type="button" class="btn btn-secondary columna-btn m-1" data-columna="${columna}">${columna}</button>
+                    `).join('');
+                    contenidoFormulario += `
+                        <div class="form-group">
+                            <label>Columna:</label>
+                            <div id="columnas-buttons" class="d-flex flex-wrap justify-content-center">${columnasButtons}</div>
+                        </div>
+                    `;
+                }
+
+                if (configActualTablaPeriodica.preguntarSimbolo) {
+                    camposPreguntados++;
+                    contenidoFormulario += `
+                        <div class="form-group">
+                            <label>Símbolo:</label>
+                            <input type="text" name="simbolo" class="form-control w-50 mx-auto" placeholder="Ej: H" autocomplete="off">
+                        </div>
+                    `;
+                }
+                
+                if (configActualTablaPeriodica.preguntarValencias) {
+                    camposPreguntados++;
+                    let valenciasParaMostrar = valenciasJuegoActual;
+                    if (!configActualTablaPeriodica.preguntarValenciasComoSimbolo) {
+                        valenciasParaMostrar = valenciasParaMostrar.map(v => v.replace(/[\\+\\-]/g, ''));
+                        valenciasParaMostrar = [...new Set(valenciasParaMostrar)].sort((a,b) => parseInt(a)-parseInt(b));
+                    }
+
+                    let valenciasButtonsHTML = valenciasParaMostrar.map(val => 
+                        `<button type="button" class="btn btn-secondary valencia-btn m-1" data-valencia="${val}">${val}</button>`
+                    ).join('');
+                    contenidoFormulario += `
+                        <div class="form-group">
+                            <label>Valencias:</label>
+                            <div id="valencia-buttons" class="d-flex flex-wrap justify-content-center">${valenciasButtonsHTML}</div>
+                        </div>
+                    `;
+                }
+
+                if (camposPreguntados > 0) {
+                    contenidoFormulario += `<button type="button" id="btn-enviar" class="btn btn-primary mt-2">Enviar</button>`;
+                } else {
+                    contenidoFormulario = `<p class="text-warning">No has seleccionado ninguna opción para preguntar en la configuración. Por favor, reinicia el juego y configura qué aspectos deseas practicar.</p><button id="reiniciar-quiz-cfg" class="btn btn-info mt-2">Reconfigurar</button>`;
+                }
+
+            } else { // Juego de preguntas normal
+                contenidoFormulario = `
+                    <form id="formulario-pregunta" class="form-group">
+                        <label>Respuesta:</label>
+                        <input type="text" name="traduccion" class="form-control" placeholder="Responde aqui" autofocus autocomplete="off">
+                        <button type="button" id="btn-enviar" class="btn btn-primary mt-2">Enviar</button>
+                    </form>
+                `;
+            }
+            
             let card = $(`
                 <div class="card" id="seccion-pregunta" style="width: 75%; margin: auto; margin-top: 20px;">
                     <h3>${prefijoPregunta} ${palabra.nombre}${sufijoPregunta}</h3>
-                    <form id="formulario-pregunta" class="form-group">
-                        <label>Respuesta:</label>
-                        <input type="text" name="traduccion" class="form-control" placeholder="Responde aqui"" autofocus autocomplete="off">
-                        <button type="button" id="btn-enviar" class="btn btn-primary mt-2">Enviar</button>
-                    </form>
+                    ${contenidoFormulario}
                 </div>
             `);
             
@@ -203,60 +438,177 @@
             if ($('#seccion-resultado').length) {
                 $('#seccion-resultado').after(card);
             } else {
-                $('#contenedor').append(card);
+                $('#contenedor').prepend(card); // Prepend para que la pregunta aparezca antes del resultado
             }
 
-            // Establecer el foco en el campo de texto
-            $('#formulario-pregunta input[name="traduccion"]').focus();
+            // Establecer el foco y eventos según el tipo de juego
+            if (tipoDeJuegoActual === "tablaPeriodica") {
+                $('#input[name="simbolo"]').focus();
 
-            // Función para manejar la respuesta
-            const manejarRespuesta = () => {
-                let traduccionRespuesta = $('#formulario-pregunta input[name="traduccion"]').val() || '';
-                verificarRespuesta(palabra, traduccionRespuesta);
-            };
+                $('.columna-btn').on('click', function () {
+                    $('.columna-btn').removeClass('active btn-warning').addClass('btn-secondary');
+                    $(this).removeClass('btn-secondary').addClass('active btn-warning');
+                });
 
-            // Vincular el evento click al botón
-            $('#btn-enviar').on('click', manejarRespuesta);
+                $('.valencia-btn').on('click', function () {
+                    $(this).toggleClass('active btn-warning');
+                    $(this).toggleClass('btn-secondary', !$(this).hasClass('active'));
+                });
+                 // Vincular Enter al input de símbolo
+                $('#input[name="simbolo"]').on('keypress', function(event) {
+                    if (event.which === 13) {
+                        event.preventDefault();
+                        manejarRespuestaTablaPeriodica(palabra);
+                    }
+                });
+                 $('#btn-enviar').on('click', () => manejarRespuestaTablaPeriodica(palabra));
 
-            // Vincular el evento Enter al input
-            $('#formulario-pregunta input[name="traduccion"]').on('keypress', function(event) {
-                if (event.which === 13) {
-                    event.preventDefault();
-                    manejarRespuesta();
-                }
-            });
+
+            } else {
+                $('#formulario-pregunta input[name="traduccion"]').focus();
+                 // Vincular el evento Enter al input
+                $('#formulario-pregunta input[name="traduccion"]').on('keypress', function(event) {
+                    if (event.which === 13) {
+                        event.preventDefault();
+                        let traduccionRespuesta = $('#formulario-pregunta input[name="traduccion"]').val() || '';
+                        verificarRespuesta(palabra, traduccionRespuesta);
+                    }
+                });
+                 $('#btn-enviar').on('click', () => {
+                    let traduccionRespuesta = $('#formulario-pregunta input[name="traduccion"]').val() || '';
+                    verificarRespuesta(palabra, traduccionRespuesta);
+                });
+            }
         }
 
-        function verificarRespuesta(palabra, traduccionRespuesta) {
-            let mensaje = `Resultados para "${palabra.nombre}": `;
-            let aciertos = 0;
+        function manejarRespuestaTablaPeriodica(elemento) {
+            let respuestaUsuario = {};
 
-            traduccionRespuesta = traduccionRespuesta || '';
+            if (configActualTablaPeriodica.preguntarColumna) {
+                respuestaUsuario.columna = $('.columna-btn.active').data('columna') || "";
+            }
+            if (configActualTablaPeriodica.preguntarSimbolo) {
+                respuestaUsuario.simbolo = $('input[name="simbolo"]').val().trim() || "";
+            }
+            if (configActualTablaPeriodica.preguntarValencias) {
+                respuestaUsuario.valencias = $('.valencia-btn.active').map(function() {
+                    return $(this).data('valencia').toString();
+                }).get();
+            }
+            verificarRespuesta(elemento, respuestaUsuario);
+        }
 
-            // Obtener resultados guardados específicos del juego actual
+        function verificarRespuesta(palabra, respuestaUsuario) {
+            let mensaje = '';
+            let aciertosParciales = 0;
+            let esCorrectoGlobal = false;
+            let totalCamposPreguntados = 0;
+
+            if (tipoDeJuegoActual === "tablaPeriodica") {
+                const elemento = palabra; // alias
+                const { columna: colRes, simbolo: simRes, valencias: valRes } = respuestaUsuario;
+
+                mensaje = `Resultados para <strong>${elemento.nombre}</strong> (Símbolo: ${elemento.simbolo}, Columna: ${elemento.columna}, Valencias: ${elemento.valenciasOriginales || elemento.valencias}):<br/>`;
+
+                // Contar cuántos campos se están preguntando realmente
+                if (configActualTablaPeriodica.preguntarSimbolo) totalCamposPreguntados++;
+                if (configActualTablaPeriodica.preguntarColumna) totalCamposPreguntados++;
+                if (configActualTablaPeriodica.preguntarValencias) totalCamposPreguntados++;
+
+                if (totalCamposPreguntados === 0) {
+                    // Esto no debería ocurrir si mostrarFormulario lo manejó bien, pero como fallback:
+                    mensaje = "No se configuró ninguna pregunta para este elemento.";
+                    // No se suma a totalPreguntas ni aciertos, se recarga la pregunta o se finaliza.
+                    setTimeout(() => {
+                        if (totalPreguntas >= numeroTotalPreguntas) {
+                            $('#seccion-pregunta').remove();
+                            mostrarResultadosFinales();
+                        } else {
+                            // No actualizar título aquí, ya que esta pregunta no contó
+                            iniciarQuiz(); 
+                        }
+                    }, 1500);
+                    return; // Salir de la función de verificación
+                }
+
+                let puntosPorCampo = 1 / totalCamposPreguntados;
+
+                // Verificar Símbolo (si aplica)
+                if (configActualTablaPeriodica.preguntarSimbolo) {
+                    if (simRes && simRes.toLowerCase() === elemento.simbolo.toLowerCase()) {
+                        aciertosParciales += puntosPorCampo;
+                        mensaje += `Símbolo: <span style="color: green;">${simRes} (Correcto)</span><br/>`;
+                    } else {
+                        mensaje += `Símbolo: <span style="color: red;">${simRes || '(sin respuesta)'} (Incorrecto)</span>. Correcto: <span style="color: orange;">${elemento.simbolo}</span><br/>`;
+                    }
+                }
+
+                // Verificar Columna (si aplica)
+                if (configActualTablaPeriodica.preguntarColumna) {
+                    if (colRes && colRes.toLowerCase() === elemento.columna.toLowerCase()) {
+                        aciertosParciales += puntosPorCampo;
+                        mensaje += `Columna: <span style="color: green;">${colRes} (Correcto)</span><br/>`;
+                    } else {
+                        mensaje += `Columna: <span style="color: red;">${colRes || '(sin respuesta)'} (Incorrecto)</span>. Correcto: <span style="color: orange;">${elemento.columna}</span><br/>`;
+                    }
+                }
+
+                // Verificar Valencias (si aplica)
+                if (configActualTablaPeriodica.preguntarValencias) {
+                    const valenciasCorrectasElemento = (configActualTablaPeriodica.preguntarValenciasComoSimbolo 
+                                                    ? elemento.valenciasOriginales 
+                                                    : elemento.valencias).split(' ').map(v => v.toString());
+                    
+                    const valenciasUsuarioArray = Array.isArray(valRes) ? valRes : (valRes ? [valRes.toString()] : []);
+
+                    const todasSeleccionadasCorrectas = valenciasUsuarioArray.length === valenciasCorrectasElemento.length && valenciasUsuarioArray.every(v => valenciasCorrectasElemento.includes(v));
+                    const todasCorrectasSeleccionadas = valenciasCorrectasElemento.every(v => valenciasUsuarioArray.includes(v));
+
+                    if (todasSeleccionadasCorrectas && todasCorrectasSeleccionadas) {
+                        aciertosParciales += puntosPorCampo;
+                        mensaje += `Valencias: <span style="color: green;">${valenciasUsuarioArray.join(', ') || '(ninguna seleccionada)'} (Correcto)</span><br/>`;
+                    } else {
+                        mensaje += `Valencias: <span style="color: red;">${valenciasUsuarioArray.join(', ') || '(ninguna seleccionada)'} (Incorrecto)</span>. Correctas: <span style="color: orange;">${valenciasCorrectasElemento.join(', ')}</span><br/>`;
+                    }
+                }
+                esCorrectoGlobal = (Math.abs(aciertosParciales - 1) < 0.001); // Sigue siendo correcto global si todos los campos preguntados son correctos
+
+            } else { // Juego de preguntas normal
+                mensaje = `Resultados para "${palabra.nombre}": `;
+                let respuestaNormal = respuestaUsuario || ''; // Asegurar que no sea undefined
+                if (typeof respuestaNormal !== 'string') { // Si por error llega algo que no es string
+                     respuestaNormal = String(respuestaNormal);
+                }
+
+                if (respuestaNormal.toLowerCase() === palabra.respuesta.toLowerCase()) {
+                    mensaje += `<span style="color: green;">Correcto: ${palabra.respuesta}</span>. `;
+                    esCorrectoGlobal = true;
+                } else {
+                    mensaje += `<span style="color: red;">Incorrecto: ${respuestaNormal || '(sin respuesta)'}</span>. La respuesta correcta es <span style="color: orange;">${palabra.respuesta}</span>.`;
+                }
+            }
+
+            totalPreguntas++;
+            if (esCorrectoGlobal) {
+                aciertosTotales++;
+            }
+
+            // Actualizar estadísticas
             let resultadosGuardados = cargarResultados();
             let resultadoPalabra = resultadosGuardados.find(r => r.palabra === palabra.nombre);
-
             let estadisticas = {
                 preguntas: resultadoPalabra ? resultadoPalabra.preguntas + 1 : 1,
                 aciertos: resultadoPalabra ? resultadoPalabra.aciertos : 0
             };
-
-            totalPreguntas++;
-
-            if (traduccionRespuesta.toLowerCase() === palabra.respuesta.toLowerCase()) {
-                mensaje += `<span style="color: green;">Correcto: ${palabra.respuesta}</span>. `;
-                aciertos = 1;
+            if (esCorrectoGlobal) {
                 estadisticas.aciertos++;
-                aciertosTotales++;
-            } else {
-                mensaje += `<span style="color: red;">Incorrecto: ${traduccionRespuesta || '(sin respuesta)'}</span>. La respuesta correcta es <span style="color: orange;">${palabra.respuesta}</span>.`;
             }
-
+            
             let nuevoResultado = {
                 palabra: palabra.nombre,
-                respuesta: traduccionRespuesta,
-                correcto: aciertos === 1,
+                respuestaDada: (tipoDeJuegoActual === "tablaPeriodica") ? JSON.stringify(respuestaUsuario) : (respuestaUsuario || ''),
+                correcto: esCorrectoGlobal,
+                aciertosParciales: (tipoDeJuegoActual === "tablaPeriodica") ? aciertosParciales.toFixed(2) : undefined,
                 preguntas: estadisticas.preguntas,
                 aciertos: estadisticas.aciertos,
                 porcentaje: (estadisticas.aciertos / estadisticas.preguntas) * 100,
@@ -269,20 +621,24 @@
             } else {
                 resultadosGuardados.push(nuevoResultado);
             }
-
             guardarResultados(resultadosGuardados);
-            resultados = resultadosGuardados;
+            resultados = resultadosGuardados; // Actualizar la variable global de resultados
 
-            mensaje += `<br/><span>Puntos: </span>${aciertosTotales}`;
+            mensaje += `<br/><span>Puntos Totales: </span>${aciertosTotales} / ${totalPreguntas}`;
 
             $('#seccion-resultado').remove();
-            
             let resultadoCard = $(`
                 <div class="card" id="seccion-resultado" style="width: 75%; margin: auto; margin-bottom: 20px;">
                     <h4>${mensaje}</h4>
                 </div>
             `);
-            $('#contenedor').prepend(resultadoCard);
+            // Insertar el resultado antes de la pregunta si la pregunta aún existe, sino al final del contenedor
+            if ($('#seccion-pregunta').length) {
+                 $('#seccion-pregunta').before(resultadoCard);
+            } else {
+                 $('#contenedor').append(resultadoCard);
+            }
+
 
             setTimeout(() => {
                 if (totalPreguntas >= numeroTotalPreguntas) {
@@ -292,27 +648,77 @@
                     actualizarTitulo();
                     iniciarQuiz();
                 }
-            }, 500);
+            }, tipoDeJuegoActual === "tablaPeriodica" ? 2500 : 1500); // Más tiempo para leer resultados de tabla periódica
         }
         
         function mostrarResultadosFinales() {
             let nota = (aciertosTotales / numeroTotalPreguntas) * 100; // Calcular nota
             
-            // Crear la tabla de resumen de preguntas
-            let resumenPreguntas = resultados
-                .slice(-numeroTotalPreguntas) // Tomar solo las últimas preguntas de esta sesión
-                .map(r => `
-                    <tr class="text-white">
-                        <td>${r.palabra}</td>
-                        <td>${r.respuesta}</td>
-                        <td>
-                            ${r.correcto ? 
-                                `<span style="color: green;">Correcto: ${r.respuesta}</span>` : 
-                                `<span style="color: red;">Incorrecto</span>. La respuesta correcta era: <span style="color: orange;">${r.palabra}</span>`
+            const inicioSlice = Math.max(0, resultados.length - numeroTotalPreguntas);
+            const resultadosSesionActual = resultados.slice(inicioSlice);
+
+            let resumenPreguntas = resultadosSesionActual
+                .map(r => {
+                    let preguntaTexto = r.palabra;
+                    let respuestaDadaTexto = '';
+                    let resultadoTexto = '';
+                    
+                    // Asegurarse de que r.respuestaDada es string antes de JSON.parse o usar directamente
+                    let rawRespuestaDada = r.respuestaDada;
+                    if (typeof rawRespuestaDada !== 'string') {
+                        rawRespuestaDada = String(rawRespuestaDada); // Convertir a string si no lo es
+                    }
+
+
+                    if (tipoDeJuegoActual === "tablaPeriodica") {
+                        const elemento = preguntasJSON.find(p => p.nombre === r.palabra);
+                        if (!elemento) return '<tr><td colspan="3">Error: Elemento no encontrado en preguntasJSON</td></tr>'; // Protección
+
+                        let detallesRespuestaDada = {};
+                        try {
+                            // Solo parsear si es un string que parece JSON object
+                            if (rawRespuestaDada.startsWith('{') && rawRespuestaDada.endsWith('}')) {
+                                detallesRespuestaDada = JSON.parse(rawRespuestaDada);
+                            } else if (rawRespuestaDada) { // Si no es JSON, podría ser un string simple o vacío
+                                // No se puede asumir una estructura, así que se podría mostrar el string crudo
+                                // o intentar deducir. Para este caso, si no es JSON, no se pueden extraer detalles.
+                                // Dejamos detallesRespuestaDada como objeto vacío si no se puede parsear.
                             }
-                        </td>
-                    </tr>
-                `).join('');
+                        } catch(e) { 
+                            console.error("Error parsing respuestaDada JSON:", e, rawRespuestaDada);
+                            // Si falla el parseo, detallesRespuestaDada queda vacío
+                        }
+                        
+                        const valenciasUsuarioTexto = (detallesRespuestaDada.valencias && Array.isArray(detallesRespuestaDada.valencias)) ? detallesRespuestaDada.valencias.join(', ') : (detallesRespuestaDada.valencias || '-');
+
+                        respuestaDadaTexto = `Símbolo: ${detallesRespuestaDada.simbolo || '-'}<br/>Col: ${detallesRespuestaDada.columna || '-'}<br/>Val: ${valenciasUsuarioTexto}`;
+                        
+                        const valenciasCorrectasText = (elemento.valenciasOriginales || elemento.valencias).split(' ').join(', ');
+
+                        if (r.correcto) {
+                            resultadoTexto = `<span style="color: green;">Correcto</span> (Puntos: ${r.aciertosParciales || 'N/A'})`;
+                        } else {
+                            resultadoTexto = `<span style="color: red;">Incorrecto</span> (Puntos: ${r.aciertosParciales || 'N/A'})<br/>Correcto: Símbolo: ${elemento.simbolo}, Col: ${elemento.columna}, Val: ${valenciasCorrectasText}`;
+                        }
+                    } else { // Juego de preguntas normal
+                        const preguntaOriginal = preguntasJSON.find(p => p.nombre === r.palabra);
+                        if (!preguntaOriginal) return '<tr><td colspan="3">Error: Pregunta no encontrada en preguntasJSON</td></tr>'; // Protección
+
+                        respuestaDadaTexto = rawRespuestaDada || '(sin respuesta)'; // Usar el string crudo
+                        if (r.correcto) {
+                            resultadoTexto = `<span style="color: green;">Correcto: ${preguntaOriginal.respuesta}</span>`;
+                        } else {
+                            resultadoTexto = `<span style="color: red;">Incorrecto</span>. Respuesta correcta: <span style="color: orange;">${preguntaOriginal.respuesta}</span>`;
+                        }
+                    }
+                    return `
+                        <tr class="text-white">
+                            <td>${preguntaTexto}</td>
+                            <td>${respuestaDadaTexto}</td>
+                            <td>${resultadoTexto}</td>
+                        </tr>
+                    `;
+                }).join('');
 
             let card = $(`
                 <div class="card bg-dark text-white" style="width: 75%; margin: auto;">
@@ -348,9 +754,10 @@
             totalPreguntas = 0;
             aciertosTotales = 0;
             palabrasUsadas = [];
+            // modoJuego se mantiene o se podría resetear aquí si se desea que siempre vuelva a preguntar
             resultados = cargarResultados();
             $('#contenedor').empty(); // Limpiar el contenedor
-            preguntarNombre(); // Volver a preguntar el nombre
+            preguntarNombre(); // Volver a preguntar el nombre y mostrar configuración
         }
 
         function mostrarEstadisticas() {
@@ -437,11 +844,19 @@
         }
 
         window.onload = function() {
-            resultados = cargarResultados();
-            preguntarNombre();
-            $('#ver-estadisticas').on('click', function() {
-                mostrarEstadisticas();
-            });
+            cargarJuego()
+                .then(() => {
+                    resultados = cargarResultados();
+                    preguntarNombre();
+                    $('#ver-estadisticas').on('click', function() {
+                        mostrarEstadisticas();
+                    });
+                })
+                .catch(error => {
+                    console.error('Error al cargar el juego:', error);
+                    alert('Error al cargar el juego: ' + error.message);
+                    window.location.href = 'index.html';
+                });
         };
     </script>
 </head>

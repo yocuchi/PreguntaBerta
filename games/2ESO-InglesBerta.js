@@ -51,8 +51,8 @@ const preguntasJSON = [
 ];
 
 const tituloJuego = "Quiz de Palabras de Inglés 2º ESO"; // Título del juego
-const prefijoPregunta = "¿Cómo se dice"; // Prefijo de la pregunta 
-const sufijoPregunta = "en inglés?"; // Sufijo de la pregunta
+const prefijoPregunta = "¿Cómo se dice "; // Prefijo de la pregunta 
+const sufijoPregunta = "  en inglés?"; // Sufijo de la pregunta
 const curso = "2ºESO";
 const descripcion = "Preguntas de vocabulario de inglés";
 const tipoJuego = "preguntas"; 

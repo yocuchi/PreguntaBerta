@@ -24,8 +24,8 @@ const preguntasJSON = [
     { nombre: "escaleras", respuesta: "stairs" }
 ];
 const tituloJuego = "Quiz de Palabras de la Familia"; // Título del juego
-const prefijoPregunta = "¿Cómo se dice"; // Prefijo de la pregunta
-const sufijoPregunta = "en inglés?"; // Sufijo de la pregunta
+const prefijoPregunta = "¿Cómo se dice "; // Prefijo de la pregunta
+const sufijoPregunta = " en inglés?"; // Sufijo de la pregunta
 const curso = "2ºPrimaria";
 const descripcion = "Preguntas de vocabulario de ingles";
 const tipoJuego = "preguntas"; // Puede ser "preguntas" o "tablaperiodica"
