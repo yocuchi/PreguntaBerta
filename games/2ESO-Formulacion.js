@@ -116,4 +116,5 @@ const sufijoPregunta = ""; // Sufijo de la pregunta
 const curso = "2ºESO";
 const descripcion = "Preguntas sobre formulación y nomenclatura química inorgánica";
 const tipoJuego = "preguntas"; // Puede ser "preguntas", "preguntaRespuesta", "completarVector", "tablaperiodica" o "Formulacion"
+const caseSensitive = false; // Indica si las respuestas distinguen mayúsculas/minúsculas
 

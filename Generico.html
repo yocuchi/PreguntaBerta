@@ -35,6 +35,7 @@
 
                     // Una vez cargado el script del juego, leemos sus variables globales
                     tipoDeJuegoActual = tipoJuego || "normal"; // Asumiendo que tipoJuego está definido en el archivo JS del juego
+                    esCaseSensitive = typeof caseSensitive !== 'undefined' ? caseSensitive : false;
 
                     // Solo cargar configuraciones específicas si es juego de tabla periódica
                     if (tipoDeJuegoActual === "tablaPeriodica") {
@@ -97,6 +98,7 @@
         
         // Variables para el tipo de juego y configuración específica
         let tipoDeJuegoActual = ""; // Se establecerá en cargarJuego
+        let esCaseSensitive = false; // Se establecerá en cargarJuego, por defecto false
         let configActualTablaPeriodica = {}; // Se llenará desde el JS del juego si es tablaPeriodica
         let columnasJuegoActual = []; // Para tablaPeriodica
         let valenciasJuegoActual = []; // Para tablaPeriodica
@@ -580,11 +582,20 @@
                      respuestaNormal = String(respuestaNormal);
                 }
 
-                if (respuestaNormal.toLowerCase() === palabra.respuesta.toLowerCase()) {
-                    mensaje += `<span style="color: green;">Correcto: ${palabra.respuesta}</span>. `;
-                    esCorrectoGlobal = true;
+                if (esCaseSensitive) {
+                    if (respuestaNormal === palabra.respuesta) {
+                        mensaje += `<span style="color: green;">Correcto: ${palabra.respuesta}</span>. `;
+                        esCorrectoGlobal = true;
+                    } else {
+                        mensaje += `<span style="color: red;">Incorrecto: ${respuestaNormal || '(sin respuesta)'}</span>. La respuesta correcta es <span style="color: orange;">${palabra.respuesta}</span>.`;
+                    }
                 } else {
-                    mensaje += `<span style="color: red;">Incorrecto: ${respuestaNormal || '(sin respuesta)'}</span>. La respuesta correcta es <span style="color: orange;">${palabra.respuesta}</span>.`;
+                    if (respuestaNormal.toLowerCase() === palabra.respuesta.toLowerCase()) {
+                        mensaje += `<span style="color: green;">Correcto: ${palabra.respuesta}</span>. `;
+                        esCorrectoGlobal = true;
+                    } else {
+                        mensaje += `<span style="color: red;">Incorrecto: ${respuestaNormal || '(sin respuesta)'}</span>. La respuesta correcta es <span style="color: orange;">${palabra.respuesta}</span>.`;
+                    }
                 }
             }
 
