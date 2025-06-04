@@ -13,6 +13,10 @@
 
 <body class="index-page">
     <h1>Bienvenido al Índice de Juegos</h1>
+    <div class="form-group">
+        <label for="selector-curso">Filtrar por curso:</label>
+        <select id="selector-curso" class="form-control"></select>
+    </div>
     <div id="contenedor-juegos"></div>
 
     <script>
@@ -39,7 +43,7 @@
                 descripcion: 'Aprende y practica vocabulario en inglés (versión Berta).'
             },
             {
-                id: '6pri-Ingles UNit 8Vocabulary',
+                id: '6Pri-Ingles UNit 8Vocabulary',
                 titulo: 'Quiz de Inglés Unidad 8 (Vocabulario)',
                 descripcion: 'Aprende y practica vocabulario de inglés de la unidad 8 para 6º de primaria.'
             },
@@ -52,14 +56,24 @@
                 id: '2ESO-Formulacion-MasterOfHidruros',
                 titulo: 'Master of Hidruros',
                 descripcion: 'Aprende y practica la formulación de hidruros.'
+            },
+            {
+                id: '4PRIMARIA-ConversionesUnidades',
+                titulo: 'Quiz de Conversiones de Unidades (4º Primaria)',
+                descripcion: 'Aprende y practica las conversiones de unidades para 4º de primaria.'
             }
         ];
 
         // Función para generar las cards de los juegos
-        function generarCards() {
+        function generarCards(cursoSeleccionado) {
             const contenedor = document.getElementById('contenedor-juegos');
-            
-            juegos.forEach(juego => {
+            contenedor.innerHTML = ''; // Limpiar cards anteriores
+
+            const juegosFiltrados = cursoSeleccionado && cursoSeleccionado !== 'Todos'
+                ? juegos.filter(juego => juego.id.startsWith(cursoSeleccionado))
+                : juegos;
+
+            juegosFiltrados.forEach(juego => {
                 const curso = juego.id.split('-')[0]; // Extraer el curso del id
                 const card = document.createElement('div');
                 card.className = 'card h-100'; // Añadimos h-100 para altura uniforme
@@ -74,8 +88,28 @@
             });
         }
 
-        // Generar las cards al cargar la página
-        window.onload = generarCards;
+        // Función para poblar el selector de cursos
+        function poblarSelectorCursos() {
+            const selector = document.getElementById('selector-curso');
+            const cursos = ['Todos', ...new Set(juegos.map(juego => juego.id.split('-')[0]))];
+
+            cursos.forEach(curso => {
+                const opcion = document.createElement('option');
+                opcion.value = curso;
+                opcion.textContent = curso;
+                selector.appendChild(opcion);
+            });
+
+            selector.addEventListener('change', (event) => {
+                generarCards(event.target.value);
+            });
+        }
+
+        // Generar las cards y poblar el selector al cargar la página
+        window.onload = () => {
+            poblarSelectorCursos();
+            generarCards('Todos'); // Mostrar todos los juegos inicialmente
+        };
     </script>
 
     <script>
