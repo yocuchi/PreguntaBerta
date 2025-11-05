@@ -21,7 +21,7 @@ const verbosJSON = {
     { "infinitive": "sit", "past": "sat", "spanish": "sentarse" },
     { "infinitive": "sleep", "past": "slept", "spanish": "dormir" },
     { "infinitive": "stand", "past": "stood", "spanish": "estar de pie" },
-    { "infinitive": "throw", "past": "threw", "spanish": "lanzar / tirar" },
+ /*   { "infinitive": "throw", "past": "threw", "spanish": "lanzar / tirar" },
     { "infinitive": "understand", "past": "understood", "spanish": "entender / comprender" },
     { "infinitive": "wear", "past": "wore", "spanish": "llevar puesto / vestir" },
     { "infinitive": "bring", "past": "brought", "spanish": "traer" },
@@ -35,7 +35,7 @@ const verbosJSON = {
     { "infinitive": "there is/are", "past": "there was/were", "spanish": "haber" },
     { "infinitive": "think", "past": "thought", "spanish": "pensar" },
     { "infinitive": "wake", "past": "woke", "spanish": "despertar" }
-  ]
+  */]
 };
 
 // Convertir los verbos en preguntas: una para infinitivo y otra para pasado
