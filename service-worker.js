@@ -10,6 +10,7 @@ const urlsToCache = [
   '/games/2ESO-Formulacion.js',
   '/games/2ESO-InglesBerta.js',
   '/games/2ESO-TablaPeriodica.js',
+  '/games/3ESO-VocabularioIngles.js',
   // Añade aquí otros archivos que quieras cachear, como imágenes o scripts de juegos específicos
   // Por ejemplo: '/games/2Pri-Ingles.js',
   'https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css',
