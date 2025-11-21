@@ -21,7 +21,7 @@ function mostrarFormulario(palabra) {
             <h3>${prefijoPregunta} "${palabra.nombre}" ${sufijoPregunta}</h3>
             <label>Respuesta:</label>
             <input type="text" name="respuesta" class="form-control" placeholder="Pon tu respuesta" autofocus autocomplete="off">
-            <button class="btn btn-primary mt-2" id="enviar-${palabra.nombre}" onclick="javascript: verificarRespuesta(palabraActual, $('input[name=\\\'respuesta\\\']').val());">Enviar</button>
+            <button class="btn btn-primary mt-2" id="enviar-${palabra.nombre}" onclick="javascript: verificarRespuesta(palabraActual, $('input[name=\\\'respuesta\\\']').val().trim());">Enviar</button>
         </div>
     `);
     $('#contenedor').append(card);

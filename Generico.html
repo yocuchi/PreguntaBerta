@@ -472,12 +472,12 @@
                 $('#formulario-pregunta input[name="traduccion"]').on('keypress', function(event) {
                     if (event.which === 13) {
                         event.preventDefault();
-                        let traduccionRespuesta = $('#formulario-pregunta input[name="traduccion"]').val() || '';
+                        let traduccionRespuesta = ($('#formulario-pregunta input[name="traduccion"]').val() || '').trim();
                         verificarRespuesta(palabra, traduccionRespuesta);
                     }
                 });
                  $('#btn-enviar').on('click', () => {
-                    let traduccionRespuesta = $('#formulario-pregunta input[name="traduccion"]').val() || '';
+                    let traduccionRespuesta = ($('#formulario-pregunta input[name="traduccion"]').val() || '').trim();
                     verificarRespuesta(palabra, traduccionRespuesta);
                 });
             }
@@ -537,7 +537,7 @@
 
                 // Verificar Símbolo (si aplica)
                 if (configActualTablaPeriodica.preguntarSimbolo) {
-                    if (simRes && simRes.toLowerCase() === elemento.simbolo.toLowerCase()) {
+                    if (simRes && simRes.trim().toLowerCase() === elemento.simbolo.trim().toLowerCase()) {
                         aciertosParciales += puntosPorCampo;
                         mensaje += `Símbolo: <span style="color: green;">${simRes} (Correcto)</span><br/>`;
                     } else {
@@ -547,7 +547,7 @@
 
                 // Verificar Columna (si aplica)
                 if (configActualTablaPeriodica.preguntarColumna) {
-                    if (colRes && colRes.toLowerCase() === elemento.columna.toLowerCase()) {
+                    if (colRes && colRes.trim().toLowerCase() === elemento.columna.trim().toLowerCase()) {
                         aciertosParciales += puntosPorCampo;
                         mensaje += `Columna: <span style="color: green;">${colRes} (Correcto)</span><br/>`;
                     } else {
@@ -581,16 +581,17 @@
                 if (typeof respuestaNormal !== 'string') { // Si por error llega algo que no es string
                      respuestaNormal = String(respuestaNormal);
                 }
+                respuestaNormal = respuestaNormal.trim(); // Eliminar espacios al inicio y al final
 
                 if (esCaseSensitive) {
-                    if (respuestaNormal === palabra.respuesta) {
+                    if (respuestaNormal === palabra.respuesta.trim()) {
                         mensaje += `<span style="color: green;">Correcto: ${palabra.respuesta}</span>. `;
                         esCorrectoGlobal = true;
                     } else {
                         mensaje += `<span style="color: red;">Incorrecto: ${respuestaNormal || '(sin respuesta)'}</span>. La respuesta correcta es <span style="color: orange;">${palabra.respuesta}</span>.`;
                     }
                 } else {
-                    if (respuestaNormal.toLowerCase() === palabra.respuesta.toLowerCase()) {
+                    if (respuestaNormal.toLowerCase() === palabra.respuesta.trim().toLowerCase()) {
                         mensaje += `<span style="color: green;">Correcto: ${palabra.respuesta}</span>. `;
                         esCorrectoGlobal = true;
                     } else {

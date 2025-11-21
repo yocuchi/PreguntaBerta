@@ -55,7 +55,7 @@ function verificarRespuesta(palabra, respuestaRespuesta) {
 
     palabra.preguntas++; // Incrementar el número de preguntas
 
-    if (respuestaRespuesta.toLowerCase() === palabra.respuesta.toLowerCase()) {
+    if (respuestaRespuesta.trim().toLowerCase() === palabra.respuesta.trim().toLowerCase()) {
         mensaje += `<span style="color: green;">Correcto: ${palabra.respuesta}</span>. `;
 
         palabra.aciertos++; // Incrementar el número de aciertos

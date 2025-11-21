@@ -139,12 +139,12 @@
             $(`#form-${elemento.nombre}`).on('submit', function (event) {
                 event.preventDefault();
                 let columnaRespuesta = $('.columna-btn.active').data('columna');
-                verificarRespuesta(elemento, { get: (name) => name === 'columna' ? columnaRespuesta : $(this).find(`[name="${name}"]`).val() });
+                verificarRespuesta(elemento, { get: (name) => name === 'columna' ? columnaRespuesta : ($(this).find(`[name="${name}"]`).val() || '').trim() });
             });
         }
         function verificarRespuesta(elemento, formData) {
-            let columnaRespuesta = formData.get('columna');
-            let simboloRespuesta = formData.get('simbolo');
+            let columnaRespuesta = formData.get('columna') ? String(formData.get('columna')).trim() : '';
+            let simboloRespuesta = formData.get('simbolo') ? String(formData.get('simbolo')).trim() : '';
 
             let valenciaElemento = elemento.valencias.split(' '); // Ahora es un array
             let aciertos = 0;
@@ -194,7 +194,7 @@
             mensaje += `. <br/><span ">Columna: </span> `;
 
             // Verifica si la respuesta de la columna es correcta
-            if (columnaRespuesta && columnaRespuesta.toLowerCase() === elemento.columna.toLowerCase()) {
+            if (columnaRespuesta && columnaRespuesta.trim().toLowerCase() === elemento.columna.trim().toLowerCase()) {
                 mensaje += `<span style="color: green;"> ${elemento.columna}</span>. `;
                 aciertos += 1 / 3; // Repartir puntos entre aciertos
             } else {
@@ -208,7 +208,7 @@
             mensaje += `.<br/><span ">Simbolo: </span> `;
 
             // Verifica si la respuesta del símbolo es correcta
-            if (simboloRespuesta && simboloRespuesta.toLowerCase() === elemento.simbolo.toLowerCase()) {
+            if (simboloRespuesta && simboloRespuesta.trim().toLowerCase() === elemento.simbolo.trim().toLowerCase()) {
                 mensaje += `<span style="color: green;"> ${elemento.simbolo}</span>. `;
                 aciertos += 1 / 3; // Repartir puntos entre aciertos
             } else {
