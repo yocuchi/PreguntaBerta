@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Índice de Juegos</title>
     <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="images/icon-512x512.png">
     <meta name="theme-color" content="#1f2937"/>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -59,7 +60,7 @@
         }
         
         .gradient-bg {
-            background: linear-gradient(-45deg, #1e3a8a, #3b82f6, #8b5cf6, #ec4899, #1e3a8a);
+            background: linear-gradient(-45deg, #1e3a8a, #3b82f6, #60a5fa, #8b5cf6, #a78bfa, #1e3a8a);
             background-size: 400% 400%;
             animation: gradient 15s ease infinite;
         }
@@ -87,6 +88,7 @@
         
         .card-gradient {
             background: linear-gradient(135deg, rgba(30, 58, 138, 0.8) 0%, rgba(59, 130, 246, 0.6) 100%);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
         }
         
@@ -108,6 +110,7 @@
         
         .select-gradient {
             background: linear-gradient(135deg, rgba(30, 58, 138, 0.3) 0%, rgba(59, 130, 246, 0.2) 100%);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
         }
         
@@ -131,27 +134,76 @@
                 background-position: 0% 50%;
             }
         }
+        
+        .star {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            border-radius: 50%;
+            animation: starFade 1.5s ease-out forwards;
+        }
+        
+        @keyframes starFade {
+            0% {
+                opacity: 1;
+                transform: scale(0) translateY(0);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1) translateY(-20px);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.5) translateY(-40px);
+            }
+        }
+        
+        .star-trail {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9998;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(147, 197, 253, 0.6) 50%, rgba(139, 92, 246, 0.3) 100%);
+            box-shadow: 0 0 10px rgba(147, 197, 253, 0.8), 0 0 20px rgba(139, 92, 246, 0.5);
+            animation: trailFade 0.8s ease-out forwards;
+        }
+        
+        @keyframes trailFade {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.3);
+            }
+        }
     </style>
 </head>
 
 <body class="gradient-bg text-white min-h-screen font-sans relative overflow-x-hidden">
     <!-- Efecto de partículas decorativas -->
     <div class="fixed inset-0 overflow-hidden pointer-events-none">
-        <div class="absolute top-20 left-10 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float"></div>
+        <div class="absolute top-20 left-10 w-72 h-72 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float"></div>
         <div class="absolute top-40 right-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float" style="animation-delay: 2s;"></div>
-        <div class="absolute -bottom-8 left-1/2 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float" style="animation-delay: 4s;"></div>
+        <div class="absolute -bottom-8 left-1/2 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float" style="animation-delay: 4s;"></div>
     </div>
+    
+    <!-- Contenedor para las estrellas del cursor -->
+    <div id="stars-container"></div>
     
     <div class="container mx-auto px-4 py-8 relative z-10">
         <header class="text-center mb-12 animate-fade-in">
-            <h1 class="text-5xl md:text-6xl font-extrabold mb-4 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent title-glow">
+            <h1 class="text-5xl md:text-6xl font-extrabold mb-4 text-white title-glow">
                 Índice de Juegos
             </h1>
-            <p class="text-lg md:text-xl text-gray-200 font-light">Selecciona un curso para filtrar o elige un juego de la lista</p>
+            <p class="text-lg md:text-xl text-gray-200 font-light">Selecciona un curso para ver los juegos disponibles</p>
         </header>
 
         <div class="max-w-md mx-auto mb-12 animate-slide-up">
-            <label for="selector-curso" class="block text-sm font-semibold text-gray-200 mb-3 uppercase tracking-wide">Filtrar por curso</label>
+            <label for="selector-curso" class="block text-sm font-semibold text-gray-200 mb-3 uppercase tracking-wide">Selecciona un curso</label>
             <div class="relative">
                 <select id="selector-curso" class="select-gradient block w-full border-2 border-blue-500/50 text-white py-4 px-5 pr-10 rounded-xl leading-tight focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/30 appearance-none transition-all duration-300 shadow-lg backdrop-blur-sm">
                     <!-- Opciones se llenan dinámicamente -->
@@ -232,9 +284,22 @@
             const contenedor = document.getElementById('contenedor-juegos');
             contenedor.innerHTML = ''; // Limpiar cards anteriores
 
-            const juegosFiltrados = cursoSeleccionado && cursoSeleccionado !== 'Todos'
-                ? juegos.filter(juego => juego.id.startsWith(cursoSeleccionado))
-                : juegos;
+            // Si no hay curso seleccionado, mostrar mensaje
+            if (!cursoSeleccionado || cursoSeleccionado === '') {
+                contenedor.innerHTML = `
+                    <div class="col-span-full text-center py-16 animate-fade-in">
+                        <div class="inline-block p-8 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
+                            <svg class="w-16 h-16 mx-auto mb-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <p class="text-xl text-gray-300 font-medium">Selecciona un curso para ver los juegos disponibles</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            const juegosFiltrados = juegos.filter(juego => juego.id.startsWith(cursoSeleccionado));
 
             juegosFiltrados.forEach((juego, index) => {
                 const curso = juego.id.split('-')[0]; // Extraer el curso del id
@@ -250,7 +315,7 @@
                     '2Pri': 'from-yellow-400 to-orange-500',
                     '2ESO': 'from-blue-400 to-cyan-500',
                     '3ESO': 'from-green-400 to-emerald-500',
-                    '4Pri': 'from-purple-400 to-pink-500',
+                    '4Pri': 'from-blue-300 to-purple-500',
                     '6Pri': 'from-indigo-400 to-purple-500'
                 };
                 const badgeGradient = badgeColors[curso] || 'from-blue-400 to-purple-500';
@@ -276,6 +341,50 @@
                     <!-- Efecto de brillo en hover -->
                     <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 -translate-x-full hover:translate-x-full transition-transform duration-1000 pointer-events-none"></div>
                 `;
+                
+                // Agregar efecto de estrellas al pasar el ratón sobre la card
+                let cardStarTime = 0;
+                card.addEventListener('mousemove', (e) => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX;
+                    const y = e.clientY;
+                    
+                    const currentTime = Date.now();
+                    
+                    // Crear estrella principal cada cierto intervalo
+                    if (currentTime - cardStarTime > starInterval) {
+                        createStar(x, y, true);
+                        cardStarTime = currentTime;
+                    }
+                    
+                    // Crear pequeñas estrellas de rastro más frecuentemente
+                    if (Math.random() > 0.6) {
+                        createStar(
+                            x + (Math.random() - 0.5) * 25,
+                            y + (Math.random() - 0.5) * 25,
+                            false
+                        );
+                    }
+                });
+                
+                // Crear estrellas adicionales cuando el ratón sale de la card
+                card.addEventListener('mouseleave', (e) => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX;
+                    const y = e.clientY;
+                    
+                    // Crear algunas estrellas finales cuando el ratón sale
+                    for (let i = 0; i < 4; i++) {
+                        setTimeout(() => {
+                            createStar(
+                                x + (Math.random() - 0.5) * 40,
+                                y + (Math.random() - 0.5) * 40,
+                                Math.random() > 0.5
+                            );
+                        }, i * 80);
+                    }
+                });
+                
                 contenedor.appendChild(card);
             });
         }
@@ -283,8 +392,17 @@
         // Función para poblar el selector de cursos
         function poblarSelectorCursos() {
             const selector = document.getElementById('selector-curso');
-            const cursos = ['Todos', ...new Set(juegos.map(juego => juego.id.split('-')[0]))];
+            const cursos = [...new Set(juegos.map(juego => juego.id.split('-')[0]))];
 
+            // Agregar opción por defecto vacía
+            const opcionDefault = document.createElement('option');
+            opcionDefault.value = '';
+            opcionDefault.textContent = '-- Selecciona un curso --';
+            opcionDefault.disabled = true;
+            opcionDefault.selected = true;
+            selector.appendChild(opcionDefault);
+
+            // Agregar cursos disponibles
             cursos.forEach(curso => {
                 const opcion = document.createElement('option');
                 opcion.value = curso;
@@ -300,8 +418,94 @@
         // Generar las cards y poblar el selector al cargar la página
         window.onload = () => {
             poblarSelectorCursos();
-            generarCards('Todos'); // Mostrar todos los juegos inicialmente
+            generarCards(''); // No mostrar juegos inicialmente
         };
+    </script>
+
+    <script>
+        // Efecto de estrellas que siguen el cursor
+        let mouseX = 0;
+        let mouseY = 0;
+        let lastStarTime = 0;
+        const starInterval = 50; // Milisegundos entre estrellas
+        
+        // Función para crear una estrella
+        function createStar(x, y, isMain = false) {
+            const container = document.getElementById('stars-container');
+            const star = document.createElement('div');
+            
+            if (isMain) {
+                // Estrella principal más grande
+                const size = Math.random() * 8 + 6;
+                star.className = 'star';
+                star.style.width = size + 'px';
+                star.style.height = size + 'px';
+                star.style.left = x - size / 2 + 'px';
+                star.style.top = y - size / 2 + 'px';
+                star.style.background = `radial-gradient(circle, 
+                    rgba(255, 255, 255, 0.9) 0%, 
+                    rgba(147, 197, 253, 0.7) 40%, 
+                    rgba(139, 92, 246, 0.5) 70%, 
+                    transparent 100%)`;
+                star.style.boxShadow = `0 0 ${size * 2}px rgba(147, 197, 253, 0.8), 
+                    0 0 ${size * 3}px rgba(139, 92, 246, 0.6)`;
+            } else {
+                // Estrella pequeña de rastro
+                star.className = 'star-trail';
+                star.style.left = x - 2 + 'px';
+                star.style.top = y - 2 + 'px';
+            }
+            
+            container.appendChild(star);
+            
+            // Eliminar la estrella después de la animación
+            setTimeout(() => {
+                if (star.parentNode) {
+                    star.parentNode.removeChild(star);
+                }
+            }, 1500);
+        }
+        
+        // Seguir el movimiento del ratón
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            
+            const currentTime = Date.now();
+            
+            // Crear estrella principal cada cierto intervalo
+            if (currentTime - lastStarTime > starInterval) {
+                createStar(mouseX, mouseY, true);
+                lastStarTime = currentTime;
+            }
+            
+            // Crear pequeñas estrellas de rastro más frecuentemente
+            if (Math.random() > 0.7) {
+                createStar(
+                    mouseX + (Math.random() - 0.5) * 20,
+                    mouseY + (Math.random() - 0.5) * 20,
+                    false
+                );
+            }
+        });
+        
+        // Crear estrellas adicionales cuando el ratón se detiene
+        let mouseStopTimer;
+        document.addEventListener('mousemove', () => {
+            clearTimeout(mouseStopTimer);
+            mouseStopTimer = setTimeout(() => {
+                // Crear algunas estrellas finales cuando el ratón se detiene
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        createStar(
+                            mouseX + (Math.random() - 0.5) * 30,
+                            mouseY + (Math.random() - 0.5) * 30,
+                            Math.random() > 0.5
+                        );
+                    }, i * 100);
+                }
+            }, 200);
+        });
     </script>
 
     <script>
