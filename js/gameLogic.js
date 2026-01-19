@@ -56,12 +56,12 @@ function verificarRespuesta(palabra, respuestaRespuesta) {
     palabra.preguntas++; // Incrementar el número de preguntas
 
     if (respuestaRespuesta.trim().toLowerCase() === palabra.respuesta.trim().toLowerCase()) {
-        mensaje += `<span style="color: green;">Correcto: ${palabra.respuesta}</span>. `;
+        mensaje += `<span style="color: green;">✅ ¡Correcto! ${palabra.respuesta}</span>. `;
 
         palabra.aciertos++; // Incrementar el número de aciertos
         totalAciertos++;
     } else {
-        mensaje += `<span style="color: red;">Incorrecto: ${respuestaRespuesta}</span>. La traducción es <span style="color: orange;">${palabra.respuesta}</span>.`;
+        mensaje += `<span style="color: red;">❌ Incorrecto: ${respuestaRespuesta}</span>. La traducción es <span style="color: orange;">${palabra.respuesta}</span>.`;
     }
 
     totalPreguntas++; // Incrementar el total de preguntas
@@ -90,7 +90,7 @@ function verificarRespuesta(palabra, respuestaRespuesta) {
 
     // Calcular y mostrar el porcentaje de aciertos
     let porcentajeAciertos = (palabra.aciertos / palabra.preguntas) * 100;
-    mensaje += `<br/><span>Puntos: </span>${totalAciertos}`;
+    mensaje += `<br/><span>🎯 Puntos: </span>${totalAciertos}`;
 
     $('#contenedor').append(`<div class="card" style="width: 75%; margin: auto;"><h4>${mensaje}</h4></div>`);
 

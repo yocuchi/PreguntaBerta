@@ -6,18 +6,166 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Índice de Juegos</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#007bff"/>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="css/styles.css">
+    <meta name="theme-color" content="#1f2937"/>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6', // blue-500
+                        secondary: '#1f2937', // gray-800
+                    },
+                    animation: {
+                        'gradient': 'gradient 15s ease infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'fade-in': 'fadeIn 0.5s ease-in',
+                        'slide-up': 'slideUp 0.6s ease-out',
+                    },
+                    keyframes: {
+                        gradient: {
+                            '0%, 100%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'left center'
+                            },
+                            '50%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'right center'
+                            }
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-20px)' }
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' }
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(30px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(-45deg, #1e3a8a, #3b82f6, #8b5cf6, #ec4899, #1e3a8a);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+        
+        .card-glow {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .card-glow::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .card-glow:hover::before {
+            opacity: 1;
+        }
+        
+        .card-gradient {
+            background: linear-gradient(135deg, rgba(30, 58, 138, 0.8) 0%, rgba(59, 130, 246, 0.6) 100%);
+            backdrop-filter: blur(10px);
+        }
+        
+        .badge-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .select-gradient {
+            background: linear-gradient(135deg, rgba(30, 58, 138, 0.3) 0%, rgba(59, 130, 246, 0.2) 100%);
+            backdrop-filter: blur(10px);
+        }
+        
+        .title-glow {
+            text-shadow: 0 0 20px rgba(59, 130, 246, 0.5), 0 0 40px rgba(59, 130, 246, 0.3);
+        }
+        
+        .card-animation {
+            animation: slideUp 0.6s ease-out forwards;
+            opacity: 0;
+        }
+        
+        @keyframes gradient {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+    </style>
 </head>
 
-<body class="index-page">
-    <h1>Bienvenido al Índice de Juegos</h1>
-    <div class="form-group">
-        <label for="selector-curso">Filtrar por curso:</label>
-        <select id="selector-curso" class="form-control"></select>
+<body class="gradient-bg text-white min-h-screen font-sans relative overflow-x-hidden">
+    <!-- Efecto de partículas decorativas -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-20 left-10 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float"></div>
+        <div class="absolute top-40 right-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float" style="animation-delay: 2s;"></div>
+        <div class="absolute -bottom-8 left-1/2 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float" style="animation-delay: 4s;"></div>
     </div>
-    <div id="contenedor-juegos"></div>
+    
+    <div class="container mx-auto px-4 py-8 relative z-10">
+        <header class="text-center mb-12 animate-fade-in">
+            <h1 class="text-5xl md:text-6xl font-extrabold mb-4 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent title-glow">
+                Índice de Juegos
+            </h1>
+            <p class="text-lg md:text-xl text-gray-200 font-light">Selecciona un curso para filtrar o elige un juego de la lista</p>
+        </header>
+
+        <div class="max-w-md mx-auto mb-12 animate-slide-up">
+            <label for="selector-curso" class="block text-sm font-semibold text-gray-200 mb-3 uppercase tracking-wide">Filtrar por curso</label>
+            <div class="relative">
+                <select id="selector-curso" class="select-gradient block w-full border-2 border-blue-500/50 text-white py-4 px-5 pr-10 rounded-xl leading-tight focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/30 appearance-none transition-all duration-300 shadow-lg backdrop-blur-sm">
+                    <!-- Opciones se llenan dinámicamente -->
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-blue-400">
+                    <svg class="fill-current h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                </div>
+            </div>
+        </div>
+
+        <div id="contenedor-juegos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 relative z-10">
+            <!-- Cards se generan dinámicamente -->
+        </div>
+    </div>
 
     <script>
         // Definición de los juegos disponibles
@@ -88,16 +236,45 @@
                 ? juegos.filter(juego => juego.id.startsWith(cursoSeleccionado))
                 : juegos;
 
-            juegosFiltrados.forEach(juego => {
+            juegosFiltrados.forEach((juego, index) => {
                 const curso = juego.id.split('-')[0]; // Extraer el curso del id
                 const card = document.createElement('div');
-                card.className = 'card h-100'; // Añadimos h-100 para altura uniforme
+                // Tailwind classes for card con animación escalonada
+                card.className = `card-glow card-gradient rounded-2xl shadow-2xl border border-white/10 overflow-hidden hover:transform hover:-translate-y-2 hover:scale-105 transition-all duration-500 flex flex-col backdrop-blur-sm`;
+                card.style.animationDelay = `${index * 0.1}s`;
+                card.style.opacity = '0';
+                card.style.animation = 'slideUp 0.6s ease-out forwards';
+                
+                // Colores de badge según el curso
+                const badgeColors = {
+                    '2Pri': 'from-yellow-400 to-orange-500',
+                    '2ESO': 'from-blue-400 to-cyan-500',
+                    '3ESO': 'from-green-400 to-emerald-500',
+                    '4Pri': 'from-purple-400 to-pink-500',
+                    '6Pri': 'from-indigo-400 to-purple-500'
+                };
+                const badgeGradient = badgeColors[curso] || 'from-blue-400 to-purple-500';
+                
                 card.innerHTML = `
-                    <div class="card-body d-flex flex-column">
-                        <h3><span class="badge badge-primary mb-2">${curso}</span><br>${juego.titulo}</h3>
-                        <p>${juego.descripcion}</p>
-                        <a href="Generico.html?juego=${juego.id}" class="btn btn-primary mt-auto">Jugar</a>
+                    <div class="p-6 md:p-8 flex flex-col flex-grow relative z-10">
+                        <div class="mb-4">
+                            <span class="inline-block bg-gradient-to-r ${badgeGradient} text-white text-xs font-bold px-3 py-1.5 rounded-full mb-3 shadow-lg">
+                                ${curso}
+                            </span>
+                            <h3 class="text-xl md:text-2xl font-bold text-white mb-2 leading-tight">${juego.titulo}</h3>
+                        </div>
+                        <p class="text-gray-200 mb-6 flex-grow text-sm md:text-base leading-relaxed opacity-90">${juego.descripcion}</p>
+                        <a href="Generico.html?juego=${juego.id}" class="btn-gradient block w-full text-center text-white font-bold py-4 px-6 rounded-xl mt-auto shadow-xl hover:shadow-2xl">
+                            <span class="flex items-center justify-center space-x-2">
+                                <span>Jugar</span>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                                </svg>
+                            </span>
+                        </a>
                     </div>
+                    <!-- Efecto de brillo en hover -->
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 -translate-x-full hover:translate-x-full transition-transform duration-1000 pointer-events-none"></div>
                 `;
                 contenedor.appendChild(card);
             });

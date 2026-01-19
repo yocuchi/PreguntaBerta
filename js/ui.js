@@ -2,8 +2,8 @@
 function mostrarConfiguracion() {
     let card = $(`
         <div class="card" id="Configuracion" style="width: 75%; margin: auto;">
-            <h3>Configuración de Partida</h3>
-            <button id="iniciar-quiz" class="btn btn-primary mt-2">Iniciar Quiz</button>
+            <h3>⚙️ Configuración de Partida</h3>
+            <button id="iniciar-quiz" class="btn btn-primary mt-2">🚀 Iniciar Quiz</button>
         </div>
     `);
     $('#contenedor').append(card);
@@ -51,7 +51,8 @@ function mostrarEstadisticas() {
         } else {
             color = 'green';
         }
-        return `<tr style="color: ${color};"><td>${r.palabra}</td><td>${r.preguntas}</td><td>${r.aciertos}</td><td>${porcentaje.toFixed(2)}%</td></tr>`;
+        const emoji = porcentaje >= 85 ? '🏆' : (porcentaje >= 50 ? '👍' : '💪');
+        return `<tr style="color: ${color};"><td>${r.palabra}</td><td>${r.preguntas}</td><td>✅ ${r.aciertos}</td><td>${emoji} ${porcentaje.toFixed(2)}%</td></tr>`;
     }).join('');
 
     let modal = $(`
@@ -59,13 +60,13 @@ function mostrarEstadisticas() {
             <div class="modal-dialog" role="document">
                 <div class="modal-content" style="background-color: black; color: white;">
                     <div class="modal-header">
-                        <h5 class="modal-title">Estadísticas</h5>
+                        <h5 class="modal-title">📊 Estadísticas</h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
                     <div class="modal-body">
-                        <h6>Resultados:</h6>
+                        <h6>📈 Resultados:</h6>
                         <table style="width: 100%; border-collapse: collapse;">
                             <thead>
                                 <tr>
@@ -104,5 +105,5 @@ function mostrarBienvenida(usuario) {
 
 function actualizarTitulo() {
     document.title = `${tituloJuego} - ${usuarioActual} - Preguntas: ${totalPreguntas}/10`;
-    $('h1').text(`Bienvenido ${usuarioActual} - Preguntas: ${totalPreguntas}/10`);
+    $('h1').text(`👋 Bienvenido ${usuarioActual} - Preguntas: ${totalPreguntas}/10`);
 }

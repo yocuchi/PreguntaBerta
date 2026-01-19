@@ -6,12 +6,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Titulo</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#007bff"/>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="css/styles.css">
+    <meta name="theme-color" content="#1f2937"/>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gray: {
+                            750: '#2d3748', // Custom lighter gray for inputs/cards
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap JS Bundle removed as we don't need it for Tailwind, but some logic might rely on it? 
+         Logic relies on $().modal(), which is Bootstrap. I need to replace modal logic. 
+         I will remove Bootstrap JS and implement a simple custom modal function. -->
+    <!-- <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script> -->
 
     <script>
         // Cargar el juego dinámicamente basado en el querystring
@@ -90,7 +106,6 @@
         let palabraActual;
         let totalPreguntas = 0;
         let numeroTotalPreguntas = 10;
-        let usuarioActual = sessionStorage.getItem('usuarioActual');
         let palabrasUsadas = [];
         let aciertosTotales = 0;
         let juegoActual = window.juegoActual || '2Pri-Ingles';
@@ -102,6 +117,28 @@
         let configActualTablaPeriodica = {}; // Se llenará desde el JS del juego si es tablaPeriodica
         let columnasJuegoActual = []; // Para tablaPeriodica
         let valenciasJuegoActual = []; // Para tablaPeriodica
+
+        // Funciones para manejar cookies
+        function getCookie(nombre) {
+            let nombreCookie = `${nombre}=`;
+            let decodedCookie = decodeURIComponent(document.cookie);
+            let cookiesArray = decodedCookie.split(';');
+            for (let i = 0; i < cookiesArray.length; i++) {
+                let cookie = cookiesArray[i].trim();
+                if (cookie.indexOf(nombreCookie) === 0) {
+                    return cookie.substring(nombreCookie.length, cookie.length);
+                }
+            }
+            return "";
+        }
+
+        function setCookie(nombre, valor) {
+            // Cookie sin fecha de expiración (persistente hasta que se borre manualmente)
+            document.cookie = `${nombre}=${valor}; path=/; SameSite=Lax`;
+        }
+
+        // Cargar usuario desde cookie
+        let usuarioActual = getCookie("usuarioActual");
 
         // Modificar la gestión de resultados para ser específica por juego
         function cargarResultados() {
@@ -121,69 +158,127 @@
             console.log('Resultados guardados:', nuevosResultados);
         }
 
+        function mostrarModalNombre() {
+            const modal = $(`
+                <div class="fixed inset-0 z-50 flex items-center justify-center p-4" id="modal-nombre">
+                    <div class="fixed inset-0 bg-black bg-opacity-75 transition-opacity" id="modal-nombre-backdrop"></div>
+                    <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-md z-10 border border-gray-700 transform transition-all">
+                        <div class="p-6">
+                            <h3 class="text-2xl font-bold text-white mb-4 text-center">👋 ¡Bienvenido!</h3>
+                            <p class="text-gray-300 mb-4 text-center">Por favor, ingresa tu nombre para comenzar:</p>
+                            <input type="text" id="input-nombre" class="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white text-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none mb-4" placeholder="Tu nombre" autofocus>
+                            <button id="btn-confirmar-nombre" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg">
+                                Continuar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `);
+            
+            $('body').append(modal);
+            $('#input-nombre').focus();
+            
+            const cerrarModal = () => {
+                $('#modal-nombre').fadeOut(200, function() { $(this).remove(); });
+            };
+            
+            $('#btn-confirmar-nombre').on('click', function() {
+                const nombre = $('#input-nombre').val().trim();
+                if (nombre) {
+                    usuarioActual = nombre;
+                    setCookie('usuarioActual', usuarioActual);
+                    actualizarNombreUsuario();
+                    cerrarModal();
+                    mostrarConfiguracion();
+                } else {
+                    $('#input-nombre').addClass('border-red-500');
+                    setTimeout(() => $('#input-nombre').removeClass('border-red-500'), 1000);
+                }
+            });
+            
+            $('#input-nombre').on('keypress', function(e) {
+                if (e.which === 13) {
+                    $('#btn-confirmar-nombre').click();
+                }
+            });
+            
+            $('#modal-nombre-backdrop').on('click', function() {
+                // No permitir cerrar sin nombre
+                const nombre = $('#input-nombre').val().trim();
+                if (!nombre) {
+                    $('#input-nombre').addClass('border-red-500');
+                    setTimeout(() => $('#input-nombre').removeClass('border-red-500'), 1000);
+                }
+            });
+        }
+
+        function actualizarNombreUsuario() {
+            // Establecer título inicial sin contador de preguntas
+            document.title = `Quiz - ${usuarioActual}`;
+            $('h1#titulo').text(`Bienvenido ${usuarioActual}`);
+            $('#nombre-usuario-display').text(usuarioActual);
+        }
+
         function preguntarNombre() {
             if (!usuarioActual) {
-                usuarioActual = prompt("Por favor, ingresa tu nombre:");
-                if (!usuarioActual) { // Si el prompt es cancelado o está vacío
-                    usuarioActual = "Invitado"; 
-                }
-                sessionStorage.setItem('usuarioActual', usuarioActual); // Guardar el nombre en sesión
+                mostrarModalNombre();
+            } else {
+                actualizarNombreUsuario();
+                mostrarConfiguracion();
             }
-            
-            // Establecer título inicial sin contador de preguntas
-            document.title = `Quiz de Palabras de la Familia - ${usuarioActual}`;
-            $('h1#titulo').text(`Bienvenido ${usuarioActual}`);
-            
-            mostrarConfiguracion();
         }
 
         function mostrarConfiguracion() {
             let configuracionHTML = '';
             if (tipoDeJuegoActual === "tablaPeriodica") {
                 configuracionHTML = `
-                    <h5>Configuración Específica de Tabla Periódica:</h5>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="simbolo-checkbox" ${configActualTablaPeriodica.preguntarSimbolo ? 'checked' : ''}>
-                            Preguntar por el Símbolo
-                        </label>
+                    <div class="mb-4 p-4 bg-gray-700 rounded-lg">
+                        <h5 class="font-bold text-lg mb-3 text-blue-300">Configuración Tabla Periódica:</h5>
+                        <div class="flex flex-col gap-2">
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" id="simbolo-checkbox" ${configActualTablaPeriodica.preguntarSimbolo ? 'checked' : ''} class="h-5 w-5 rounded bg-gray-800 border-gray-600 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer">
+                                <span class="text-gray-200">Preguntar por el Símbolo</span>
+                            </label>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" id="columna-checkbox" ${configActualTablaPeriodica.preguntarColumna ? 'checked' : ''} class="h-5 w-5 rounded bg-gray-800 border-gray-600 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer">
+                                <span class="text-gray-200">Preguntar por la Columna</span>
+                            </label>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" id="valencias-checkbox" ${configActualTablaPeriodica.preguntarValencias ? 'checked' : ''} class="h-5 w-5 rounded bg-gray-800 border-gray-600 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer">
+                                <span class="text-gray-200">Preguntar por las Valencias</span>
+                            </label>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" id="valencias-simbolo-checkbox" ${configActualTablaPeriodica.preguntarValenciasComoSimbolo ? 'checked' : ''} ${!configActualTablaPeriodica.preguntarValencias ? 'disabled' : ''} class="h-5 w-5 rounded bg-gray-800 border-gray-600 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                                <span class="text-gray-200">Preguntar Valencias con signo (+/-)</span>
+                            </label>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="columna-checkbox" ${configActualTablaPeriodica.preguntarColumna ? 'checked' : ''}>
-                            Preguntar por la Columna
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="valencias-checkbox" ${configActualTablaPeriodica.preguntarValencias ? 'checked' : ''}>
-                            Preguntar por las Valencias
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="valencias-simbolo-checkbox" ${configActualTablaPeriodica.preguntarValenciasComoSimbolo ? 'checked' : ''} ${!configActualTablaPeriodica.preguntarValencias ? 'disabled' : ''}>
-                            Preguntar Valencias con signo (+/-)
-                        </label>
-                    </div>
-                    <hr/>
                 `;
             }
 
             let card = $(`
-                <div class="card" id="Configuracion" style="width: 75%; margin: auto;">
-                    <h3>Configuración de Partida</h3>
+                <div class="card bg-gray-800 border border-gray-700 rounded-xl shadow-2xl p-6 w-full max-w-lg mx-auto transform transition-all" id="Configuracion">
+                    <h3 class="text-2xl font-bold mb-4 text-white text-center">⚙️ Configuración de Partida</h3>
                     ${configuracionHTML}
-                    <p>Elige el modo de juego:</p>
-                    <button id="modo-todas" class="btn btn-info mb-2">Todas las preguntas (${preguntasJSON.length} preguntas)</button>
-                    <button id="modo-surtido" class="btn btn-info mb-3">Surtido de preguntas</button>
-                    <div id="config-surtido" style="display: none;">
-                        <div class="form-group">
-                            <label for="num-preguntas">Número de preguntas:</label>
-                            <input type="number" id="num-preguntas" class="form-control" value="10" min="1" max="50">
-                            <small class="form-text text-muted">Elige entre 1 y  ${preguntasJSON.length} preguntas disponibles)</small>
+                    <p class="mb-3 text-gray-300 font-medium">Elige el modo de juego:</p>
+                    
+                    <button id="modo-todas" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded-lg mb-3 transition-colors shadow-md">
+                        Todas las preguntas (${preguntasJSON.length})
+                    </button>
+                    
+                    <button id="modo-surtido" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg mb-4 transition-colors shadow-md">
+                        Surtido de preguntas
+                    </button>
+                    
+                    <div id="config-surtido" style="display: none;" class="bg-gray-700 p-4 rounded-lg border border-gray-600">
+                        <div class="mb-4">
+                            <label for="num-preguntas" class="block text-sm font-medium text-gray-300 mb-1">Número de preguntas:</label>
+                            <input type="number" id="num-preguntas" class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" value="10" min="1" max="50">
+                            <small class="block mt-1 text-gray-400 text-xs">Elige entre 1 y ${preguntasJSON.length} preguntas</small>
                         </div>
-                        <button id="iniciar-quiz-surtido" class="btn btn-primary mt-2">Iniciar Quiz con Surtido</button>
+                        <button id="iniciar-quiz-surtido" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md">
+                            🚀 Iniciar Quiz
+                        </button>
                     </div>
                 </div>
             `);
@@ -201,7 +296,7 @@
                 modoJuego = 'surtido';
                 $('#modo-todas').hide();
                 $('#modo-surtido').hide();
-                $('#config-surtido').show();
+                $('#config-surtido').slideDown(300); // jQuery effect
                 // Actualizar el max del input si es necesario
                 let maxPreguntas = preguntasJSON.length > 50 ? 50 : preguntasJSON.length;
                 $('#num-preguntas').attr('max', maxPreguntas);
@@ -267,7 +362,6 @@
                         }
                     } else {
                         // Si no se preguntan valencias, podemos dejar las valenciasJuegoActual vacías o con las originales con signo
-                        // Esto asegura que si se vuelven a activar, tengan los valores correctos.
                          preguntasJSON.forEach(elemento => {
                             elemento.valencias = elemento.valenciasOriginales || elemento.valencias; // Restaurar originales por si acaso
                         });
@@ -287,8 +381,8 @@
         }
 
         function actualizarTitulo() {
-            document.title = `Quiz de Palabras de la Familia - ${usuarioActual} - Preguntas: ${totalPreguntas}/${numeroTotalPreguntas}`;
-            $('h1#titulo').text(`Bienvenido ${usuarioActual} - Preguntas: ${totalPreguntas}/${numeroTotalPreguntas}`);
+            document.title = `Quiz - ${usuarioActual} - Preguntas: ${totalPreguntas}/${numeroTotalPreguntas}`;
+            $('h1#titulo').text(`👋 Bienvenido ${usuarioActual} - Preguntas: ${totalPreguntas}/${numeroTotalPreguntas}`);
             // Agregar descripción desde el archivo JS
             $('#descripcion').text(curso + " - " + descripcion);
         }
@@ -374,12 +468,12 @@
                 if (configActualTablaPeriodica.preguntarColumna) {
                     camposPreguntados++;
                     let columnasButtons = columnasJuegoActual.map(columna => `
-                        <button type="button" class="btn btn-secondary columna-btn m-1" data-columna="${columna}">${columna}</button>
+                        <button type="button" class="columna-btn m-1 bg-gray-700 hover:bg-gray-600 text-white py-2 px-3 rounded text-sm transition-colors border border-gray-600" data-columna="${columna}">${columna}</button>
                     `).join('');
                     contenidoFormulario += `
-                        <div class="form-group">
-                            <label>Columna:</label>
-                            <div id="columnas-buttons" class="d-flex flex-wrap justify-content-center">${columnasButtons}</div>
+                        <div class="mb-4">
+                            <label class="block text-gray-300 mb-2">Columna:</label>
+                            <div id="columnas-buttons" class="flex flex-wrap justify-center gap-1">${columnasButtons}</div>
                         </div>
                     `;
                 }
@@ -387,9 +481,9 @@
                 if (configActualTablaPeriodica.preguntarSimbolo) {
                     camposPreguntados++;
                     contenidoFormulario += `
-                        <div class="form-group">
-                            <label>Símbolo:</label>
-                            <input type="text" name="simbolo" class="form-control w-50 mx-auto" placeholder="Ej: H" autocomplete="off">
+                        <div class="mb-4">
+                            <label class="block text-gray-300 mb-2">Símbolo:</label>
+                            <input type="text" name="simbolo" class="w-1/2 mx-auto block bg-gray-900 border border-gray-600 rounded p-2 text-white text-center text-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: H" autocomplete="off">
                         </div>
                     `;
                 }
@@ -403,35 +497,35 @@
                     }
 
                     let valenciasButtonsHTML = valenciasParaMostrar.map(val => 
-                        `<button type="button" class="btn btn-secondary valencia-btn m-1" data-valencia="${val}">${val}</button>`
+                        `<button type="button" class="valencia-btn m-1 bg-gray-700 hover:bg-gray-600 text-white py-2 px-3 rounded min-w-[3rem] transition-colors border border-gray-600" data-valencia="${val}">${val}</button>`
                     ).join('');
                     contenidoFormulario += `
-                        <div class="form-group">
-                            <label>Valencias:</label>
-                            <div id="valencia-buttons" class="d-flex flex-wrap justify-content-center">${valenciasButtonsHTML}</div>
+                        <div class="mb-4">
+                            <label class="block text-gray-300 mb-2">Valencias:</label>
+                            <div id="valencia-buttons" class="flex flex-wrap justify-center gap-1">${valenciasButtonsHTML}</div>
                         </div>
                     `;
                 }
 
                 if (camposPreguntados > 0) {
-                    contenidoFormulario += `<button type="button" id="btn-enviar" class="btn btn-primary mt-2">Enviar</button>`;
+                    contenidoFormulario += `<button type="button" id="btn-enviar" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg mt-4 transition-colors shadow-lg">Enviar</button>`;
                 } else {
-                    contenidoFormulario = `<p class="text-warning">No has seleccionado ninguna opción para preguntar en la configuración. Por favor, reinicia el juego y configura qué aspectos deseas practicar.</p><button id="reiniciar-quiz-cfg" class="btn btn-info mt-2">Reconfigurar</button>`;
+                    contenidoFormulario = `<p class="text-yellow-400 mb-3">No has seleccionado ninguna opción para preguntar en la configuración. Por favor, reinicia el juego y configura qué aspectos deseas practicar.</p><button id="reiniciar-quiz-cfg" class="bg-cyan-600 hover:bg-cyan-700 text-white py-2 px-4 rounded">Reconfigurar</button>`;
                 }
 
             } else { // Juego de preguntas normal
                 contenidoFormulario = `
-                    <form id="formulario-pregunta" class="form-group">
-                        <label>Respuesta:</label>
-                        <input type="text" name="traduccion" class="form-control" placeholder="Responde aqui" autofocus autocomplete="off">
-                        <button type="button" id="btn-enviar" class="btn btn-primary mt-2">Enviar</button>
+                    <form id="formulario-pregunta" class="w-full">
+                        <label class="block text-gray-300 mb-2 text-left">Respuesta:</label>
+                        <input type="text" name="traduccion" class="w-full bg-gray-900 border border-gray-600 rounded p-3 text-white text-lg focus:ring-2 focus:ring-blue-500 outline-none mb-4" placeholder="Escribe tu respuesta aquí" autofocus autocomplete="off">
+                        <button type="button" id="btn-enviar" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg">Enviar</button>
                     </form>
                 `;
             }
             
             let card = $(`
-                <div class="card" id="seccion-pregunta" style="width: 75%; margin: auto; margin-top: 20px;">
-                    <h3>${prefijoPregunta} ${palabra.nombre}${sufijoPregunta}</h3>
+                <div class="card bg-gray-800 border border-gray-700 rounded-xl shadow-2xl p-6 w-full max-w-lg mx-auto mt-6" id="seccion-pregunta">
+                    <h3 class="text-2xl font-bold mb-6 text-white text-center">${prefijoPregunta} <span class="text-blue-400">${palabra.nombre}</span>${sufijoPregunta}</h3>
                     ${contenidoFormulario}
                 </div>
             `);
@@ -445,19 +539,23 @@
 
             // Establecer el foco y eventos según el tipo de juego
             if (tipoDeJuegoActual === "tablaPeriodica") {
-                $('#input[name="simbolo"]').focus();
+                $('input[name="simbolo"]').focus();
 
                 $('.columna-btn').on('click', function () {
-                    $('.columna-btn').removeClass('active btn-warning').addClass('btn-secondary');
-                    $(this).removeClass('btn-secondary').addClass('active btn-warning');
+                    // Update classes for Tailwind (using yellow-500 for active state)
+                    $('.columna-btn').removeClass('bg-yellow-500 text-gray-900 font-bold active').addClass('bg-gray-700 text-white');
+                    $(this).removeClass('bg-gray-700 text-white').addClass('bg-yellow-500 text-gray-900 font-bold active');
                 });
 
                 $('.valencia-btn').on('click', function () {
-                    $(this).toggleClass('active btn-warning');
-                    $(this).toggleClass('btn-secondary', !$(this).hasClass('active'));
+                    if ($(this).hasClass('active')) {
+                         $(this).removeClass('bg-yellow-500 text-gray-900 font-bold active').addClass('bg-gray-700 text-white');
+                    } else {
+                         $(this).removeClass('bg-gray-700 text-white').addClass('bg-yellow-500 text-gray-900 font-bold active');
+                    }
                 });
                  // Vincular Enter al input de símbolo
-                $('#input[name="simbolo"]').on('keypress', function(event) {
+                $('input[name="simbolo"]').on('keypress', function(event) {
                     if (event.which === 13) {
                         event.preventDefault();
                         manejarRespuestaTablaPeriodica(palabra);
@@ -510,7 +608,7 @@
                 const elemento = palabra; // alias
                 const { columna: colRes, simbolo: simRes, valencias: valRes } = respuestaUsuario;
 
-                mensaje = `Resultados para <strong>${elemento.nombre}</strong> (Símbolo: ${elemento.simbolo}, Columna: ${elemento.columna}, Valencias: ${elemento.valenciasOriginales || elemento.valencias}):<br/>`;
+                mensaje = `Resultados para <strong class="text-white">${elemento.nombre}</strong> <span class="text-gray-400 text-sm">(Símbolo: ${elemento.simbolo}, Columna: ${elemento.columna}, Valencias: ${elemento.valenciasOriginales || elemento.valencias})</span>:<br/><div class="mt-2 space-y-1">`;
 
                 // Contar cuántos campos se están preguntando realmente
                 if (configActualTablaPeriodica.preguntarSimbolo) totalCamposPreguntados++;
@@ -539,9 +637,9 @@
                 if (configActualTablaPeriodica.preguntarSimbolo) {
                     if (simRes && simRes.trim().toLowerCase() === elemento.simbolo.trim().toLowerCase()) {
                         aciertosParciales += puntosPorCampo;
-                        mensaje += `Símbolo: <span style="color: green;">${simRes} (Correcto)</span><br/>`;
+                        mensaje += `<div>Símbolo: <span class="text-green-400 font-bold">✅ ${simRes} (Correcto)</span></div>`;
                     } else {
-                        mensaje += `Símbolo: <span style="color: red;">${simRes || '(sin respuesta)'} (Incorrecto)</span>. Correcto: <span style="color: orange;">${elemento.simbolo}</span><br/>`;
+                        mensaje += `<div>Símbolo: <span class="text-red-400 font-bold">❌ ${simRes || '(sin respuesta)'} (Incorrecto)</span>. <span class="text-gray-400">Correcto: <span class="text-green-400">${elemento.simbolo}</span></span></div>`;
                     }
                 }
 
@@ -549,9 +647,9 @@
                 if (configActualTablaPeriodica.preguntarColumna) {
                     if (colRes && colRes.trim().toLowerCase() === elemento.columna.trim().toLowerCase()) {
                         aciertosParciales += puntosPorCampo;
-                        mensaje += `Columna: <span style="color: green;">${colRes} (Correcto)</span><br/>`;
+                        mensaje += `<div>Columna: <span class="text-green-400 font-bold">✅ ${colRes} (Correcto)</span></div>`;
                     } else {
-                        mensaje += `Columna: <span style="color: red;">${colRes || '(sin respuesta)'} (Incorrecto)</span>. Correcto: <span style="color: orange;">${elemento.columna}</span><br/>`;
+                        mensaje += `<div>Columna: <span class="text-red-400 font-bold">❌ ${colRes || '(sin respuesta)'} (Incorrecto)</span>. <span class="text-gray-400">Correcto: <span class="text-green-400">${elemento.columna}</span></span></div>`;
                     }
                 }
 
@@ -568,15 +666,16 @@
 
                     if (todasSeleccionadasCorrectas && todasCorrectasSeleccionadas) {
                         aciertosParciales += puntosPorCampo;
-                        mensaje += `Valencias: <span style="color: green;">${valenciasUsuarioArray.join(', ') || '(ninguna seleccionada)'} (Correcto)</span><br/>`;
+                        mensaje += `<div>Valencias: <span class="text-green-400 font-bold">✅ ${valenciasUsuarioArray.join(', ') || '(ninguna)'} (Correcto)</span></div>`;
                     } else {
-                        mensaje += `Valencias: <span style="color: red;">${valenciasUsuarioArray.join(', ') || '(ninguna seleccionada)'} (Incorrecto)</span>. Correctas: <span style="color: orange;">${valenciasCorrectasElemento.join(', ')}</span><br/>`;
+                        mensaje += `<div>Valencias: <span class="text-red-400 font-bold">❌ ${valenciasUsuarioArray.join(', ') || '(ninguna)'} (Incorrecto)</span>. <span class="text-gray-400">Correctas: <span class="text-green-400">${valenciasCorrectasElemento.join(', ')}</span></span></div>`;
                     }
                 }
+                mensaje += "</div>";
                 esCorrectoGlobal = (Math.abs(aciertosParciales - 1) < 0.001); // Sigue siendo correcto global si todos los campos preguntados son correctos
 
             } else { // Juego de preguntas normal
-                mensaje = `Resultados para "${palabra.nombre}": `;
+                mensaje = `Resultados para "<span class="font-bold text-blue-300">${palabra.nombre}</span>":<div class="mt-2">`;
                 let respuestaNormal = respuestaUsuario || ''; // Asegurar que no sea undefined
                 if (typeof respuestaNormal !== 'string') { // Si por error llega algo que no es string
                      respuestaNormal = String(respuestaNormal);
@@ -585,19 +684,20 @@
 
                 if (esCaseSensitive) {
                     if (respuestaNormal === palabra.respuesta.trim()) {
-                        mensaje += `<span style="color: green;">Correcto: ${palabra.respuesta}</span>. `;
+                        mensaje += `<span class="text-green-400 font-bold text-lg">✅ ¡Correcto! ${palabra.respuesta}</span>`;
                         esCorrectoGlobal = true;
                     } else {
-                        mensaje += `<span style="color: red;">Incorrecto: ${respuestaNormal || '(sin respuesta)'}</span>. La respuesta correcta es <span style="color: orange;">${palabra.respuesta}</span>.`;
+                        mensaje += `<div class="text-red-400 font-bold mb-1">❌ Incorrecto: ${respuestaNormal || '(sin respuesta)'}</div><div class="text-gray-400">La respuesta correcta es <span class="text-green-400 font-bold">${palabra.respuesta}</span>.</div>`;
                     }
                 } else {
                     if (respuestaNormal.toLowerCase() === palabra.respuesta.trim().toLowerCase()) {
-                        mensaje += `<span style="color: green;">Correcto: ${palabra.respuesta}</span>. `;
+                        mensaje += `<span class="text-green-400 font-bold text-lg">✅ ¡Correcto! ${palabra.respuesta}</span>`;
                         esCorrectoGlobal = true;
                     } else {
-                        mensaje += `<span style="color: red;">Incorrecto: ${respuestaNormal || '(sin respuesta)'}</span>. La respuesta correcta es <span style="color: orange;">${palabra.respuesta}</span>.`;
+                        mensaje += `<div class="text-red-400 font-bold mb-1">❌ Incorrecto: ${respuestaNormal || '(sin respuesta)'}</div><div class="text-gray-400">La respuesta correcta es <span class="text-green-400 font-bold">${palabra.respuesta}</span>.</div>`;
                     }
                 }
+                mensaje += "</div>";
             }
 
             totalPreguntas++;
@@ -636,12 +736,12 @@
             guardarResultados(resultadosGuardados);
             resultados = resultadosGuardados; // Actualizar la variable global de resultados
 
-            mensaje += `<br/><span>Puntos Totales: </span>${aciertosTotales} / ${totalPreguntas}`;
+            mensaje += `<div class="mt-4 pt-3 border-t border-gray-700 text-sm text-gray-400">🎯 Puntos Totales: <span class="text-white font-bold">${aciertosTotales} / ${totalPreguntas}</span></div>`;
 
             $('#seccion-resultado').remove();
             let resultadoCard = $(`
-                <div class="card" id="seccion-resultado" style="width: 75%; margin: auto; margin-bottom: 20px;">
-                    <h4>${mensaje}</h4>
+                <div class="card bg-gray-800 border border-gray-700 rounded-xl shadow-lg p-6 w-full max-w-lg mx-auto mb-6" id="seccion-resultado">
+                    <div class="text-lg">${mensaje}</div>
                 </div>
             `);
             // Insertar el resultado antes de la pregunta si la pregunta aún existe, sino al final del contenedor
@@ -660,7 +760,7 @@
                     actualizarTitulo();
                     iniciarQuiz();
                 }
-            }, tipoDeJuegoActual === "tablaPeriodica" ? 2500 : 1500); // Más tiempo para leer resultados de tabla periódica
+            }, tipoDeJuegoActual === "tablaPeriodica" ? 3000 : 2000); // Más tiempo para leer resultados de tabla periódica
         }
         
         function mostrarResultadosFinales() {
@@ -684,7 +784,7 @@
 
                     if (tipoDeJuegoActual === "tablaPeriodica") {
                         const elemento = preguntasJSON.find(p => p.nombre === r.palabra);
-                        if (!elemento) return '<tr><td colspan="3">Error: Elemento no encontrado en preguntasJSON</td></tr>'; // Protección
+                        if (!elemento) return '<tr><td colspan="3" class="p-2">Error: Elemento no encontrado</td></tr>';
 
                         let detallesRespuestaDada = {};
                         try {
@@ -703,55 +803,57 @@
                         
                         const valenciasUsuarioTexto = (detallesRespuestaDada.valencias && Array.isArray(detallesRespuestaDada.valencias)) ? detallesRespuestaDada.valencias.join(', ') : (detallesRespuestaDada.valencias || '-');
 
-                        respuestaDadaTexto = `Símbolo: ${detallesRespuestaDada.simbolo || '-'}<br/>Col: ${detallesRespuestaDada.columna || '-'}<br/>Val: ${valenciasUsuarioTexto}`;
+                        respuestaDadaTexto = `<div class="text-xs">Sim: ${detallesRespuestaDada.simbolo || '-'}<br/>Col: ${detallesRespuestaDada.columna || '-'}<br/>Val: ${valenciasUsuarioTexto}</div>`;
                         
                         const valenciasCorrectasText = (elemento.valenciasOriginales || elemento.valencias).split(' ').join(', ');
 
                         if (r.correcto) {
-                            resultadoTexto = `<span style="color: green;">Correcto</span> (Puntos: ${r.aciertosParciales || 'N/A'})`;
+                            resultadoTexto = `<span class="text-green-400 font-bold">✅ Correcto</span>`;
                         } else {
-                            resultadoTexto = `<span style="color: red;">Incorrecto</span> (Puntos: ${r.aciertosParciales || 'N/A'})<br/>Correcto: Símbolo: ${elemento.simbolo}, Col: ${elemento.columna}, Val: ${valenciasCorrectasText}`;
+                            resultadoTexto = `<span class="text-red-400 font-bold">❌ Incorrecto</span><div class="text-xs text-gray-400 mt-1">Sim: ${elemento.simbolo}<br/>Col: ${elemento.columna}<br/>Val: ${valenciasCorrectasText}</div>`;
                         }
                     } else { // Juego de preguntas normal
                         const preguntaOriginal = preguntasJSON.find(p => p.nombre === r.palabra);
-                        if (!preguntaOriginal) return '<tr><td colspan="3">Error: Pregunta no encontrada en preguntasJSON</td></tr>'; // Protección
+                        if (!preguntaOriginal) return '<tr><td colspan="3" class="p-2">Error: Pregunta no encontrada</td></tr>';
 
-                        respuestaDadaTexto = rawRespuestaDada || '(sin respuesta)'; // Usar el string crudo
+                        respuestaDadaTexto = rawRespuestaDada || '<span class="italic text-gray-500">(sin respuesta)</span>'; // Usar el string crudo
                         if (r.correcto) {
-                            resultadoTexto = `<span style="color: green;">Correcto: ${preguntaOriginal.respuesta}</span>`;
+                            resultadoTexto = `<span class="text-green-400 font-bold">✅ Correcto</span>`;
                         } else {
-                            resultadoTexto = `<span style="color: red;">Incorrecto</span>. Respuesta correcta: <span style="color: orange;">${preguntaOriginal.respuesta}</span>`;
+                            resultadoTexto = `<span class="text-red-400 font-bold">❌ Incorrecto</span> <span class="text-gray-400 text-sm">(${preguntaOriginal.respuesta})</span>`;
                         }
                     }
                     return `
-                        <tr class="text-white">
-                            <td>${preguntaTexto}</td>
-                            <td>${respuestaDadaTexto}</td>
-                            <td>${resultadoTexto}</td>
+                        <tr class="border-b border-gray-700 hover:bg-gray-700 transition-colors">
+                            <td class="p-3 align-top font-medium text-blue-300">${preguntaTexto}</td>
+                            <td class="p-3 align-top text-gray-300">${respuestaDadaTexto}</td>
+                            <td class="p-3 align-top">${resultadoTexto}</td>
                         </tr>
                     `;
                 }).join('');
 
             let card = $(`
-                <div class="card bg-dark text-white" style="width: 75%; margin: auto;">
-                    <div class="card-body">
-                        <h4>Has terminado el quiz. Tu nota es: ${nota.toFixed(2)}%</h4>
-                        <div class="table-responsive mt-4">
-                            <h5>Resumen de tus respuestas:</h5>
-                            <table class="table table-dark">
-                                <thead>
+                <div class="card bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-full max-w-4xl mx-auto my-10">
+                    <div class="p-6 md:p-8">
+                        <div class="text-center mb-8">
+                            <h4 class="text-3xl font-bold text-white mb-2">🏁 Fin del Quiz</h4>
+                            <div class="text-xl text-gray-400">💯 Nota final: <span class="font-bold ${nota >= 50 ? 'text-green-400' : 'text-red-400'}">${nota.toFixed(2)}%</span> ${nota >= 90 ? '🎉' : nota >= 70 ? '👍' : nota >= 50 ? '😊' : '💪'}</div>
+                        </div>
+                        <div class="overflow-x-auto rounded-lg border border-gray-700 bg-gray-900 mb-8">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-gray-800 text-gray-400 uppercase text-xs tracking-wider">
                                     <tr>
-                                        <th>Pregunta</th>
-                                        <th>Tu respuesta</th>
-                                        <th>Resultado</th>
+                                        <th class="p-3 font-semibold">Pregunta</th>
+                                        <th class="p-3 font-semibold">Tu respuesta</th>
+                                        <th class="p-3 font-semibold">Resultado</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody class="divide-y divide-gray-700">
                                     ${resumenPreguntas}
                                 </tbody>
                             </table>
                         </div>
-                        <button id="reiniciar-quiz" class="btn btn-primary mt-2">Reiniciar Quiz</button>
+                        <button id="reiniciar-quiz" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg">🔄 Reiniciar Quiz</button>
                     </div>
                 </div>
             `);
@@ -770,6 +872,70 @@
             resultados = cargarResultados();
             $('#contenedor').empty(); // Limpiar el contenedor
             preguntarNombre(); // Volver a preguntar el nombre y mostrar configuración
+        }
+
+        function mostrarAjustesUsuario() {
+            const modal = $(`
+                <div class="fixed inset-0 z-50 flex items-center justify-center p-4" id="modal-ajustes">
+                    <div class="fixed inset-0 bg-black bg-opacity-75 transition-opacity" id="modal-ajustes-backdrop"></div>
+                    <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-md z-10 border border-gray-700 transform transition-all">
+                        <div class="p-6">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-2xl font-bold text-white">Ajustes de Usuario</h3>
+                                <button type="button" class="text-gray-400 hover:text-white transition-colors text-2xl leading-none focus:outline-none" id="cerrar-ajustes">
+                                    &times;
+                                </button>
+                            </div>
+                            
+                            <div class="mb-6">
+                                <label class="block text-gray-300 mb-2 font-medium">Nombre de usuario:</label>
+                                <div class="flex space-x-2">
+                                    <input type="text" id="input-cambiar-nombre" class="flex-1 bg-gray-900 border border-gray-600 rounded-lg p-3 text-white text-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" placeholder="Tu nombre">
+                                    <button id="btn-guardar-nombre" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-lg">
+                                        Guardar
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="pt-4 border-t border-gray-700">
+                                <button type="button" class="w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md" id="btn-cerrar-ajustes">
+                                    Cerrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `);
+            
+            $('body').append(modal);
+            $('#input-cambiar-nombre').val(usuarioActual || '').focus().select();
+            
+            const cerrarModal = () => {
+                $('#modal-ajustes').fadeOut(200, function() { $(this).remove(); });
+            };
+            
+            $('#btn-guardar-nombre').on('click', function() {
+                const nuevoNombre = $('#input-cambiar-nombre').val().trim();
+                if (nuevoNombre && nuevoNombre !== usuarioActual) {
+                    usuarioActual = nuevoNombre;
+                    setCookie('usuarioActual', usuarioActual);
+                    actualizarNombreUsuario();
+                    cerrarModal();
+                } else if (!nuevoNombre) {
+                    $('#input-cambiar-nombre').addClass('border-red-500');
+                    setTimeout(() => $('#input-cambiar-nombre').removeClass('border-red-500'), 1000);
+                } else {
+                    cerrarModal();
+                }
+            });
+            
+            $('#input-cambiar-nombre').on('keypress', function(e) {
+                if (e.which === 13) {
+                    $('#btn-guardar-nombre').click();
+                }
+            });
+            
+            $('#cerrar-ajustes, #btn-cerrar-ajustes, #modal-ajustes-backdrop').on('click', cerrarModal);
         }
 
         function mostrarEstadisticas() {
@@ -793,65 +959,76 @@
             });
 
             let resultadosHTML = `
-                <table class="table table-dark table-striped">
-                    <thead>
-                        <tr>
-                            <th>Pregunta</th>
-                            <th>Veces Preguntada</th>
-                            <th>Aciertos</th>
-                            <th>Porcentaje</th>
-                            <th>Última vez</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${Object.entries(resultadosAgrupados)
-                            .sort(([palabraA], [palabraB]) => palabraA.localeCompare(palabraB))
-                            .map(([palabra, stats]) => {
-                            const colorClass = stats.porcentaje >= 85 ? 'text-success' : 'text-danger';
-                            return `
-                                <tr>
-                                    <td>${palabra}</td>
-                                    <td>${stats.preguntas}</td>
-                                    <td>${stats.aciertos}</td>
-                                    <td class="${colorClass}">${stats.porcentaje.toFixed(2)}%</td>
-                                    <td>${stats.ultimaVez || 'No disponible'}</td>
-                                </tr>
-                            `;
-                        }).join('')}
-                    </tbody>
-                </table>
+                <div class="overflow-x-auto rounded-lg border border-gray-600 bg-gray-900 max-h-[60vh] overflow-y-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-800 text-gray-400 uppercase text-xs tracking-wider sticky top-0">
+                            <tr>
+                                <th class="p-3 font-semibold">Pregunta</th>
+                                <th class="p-3 font-semibold text-center">Veces</th>
+                                <th class="p-3 font-semibold text-center">Aciertos</th>
+                                <th class="p-3 font-semibold text-center">%</th>
+                                <th class="p-3 font-semibold">Última vez</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-700">
+                            ${Object.entries(resultadosAgrupados)
+                                .sort(([palabraA], [palabraB]) => palabraA.localeCompare(palabraB))
+                                .map(([palabra, stats]) => {
+                                const colorClass = stats.porcentaje >= 85 ? 'text-green-400' : (stats.porcentaje >= 50 ? 'text-yellow-400' : 'text-red-400');
+                                const emoji = stats.porcentaje >= 85 ? '🏆' : (stats.porcentaje >= 50 ? '👍' : '💪');
+                                return `
+                                    <tr class="hover:bg-gray-800">
+                                        <td class="p-3 font-medium text-gray-200">${palabra}</td>
+                                        <td class="p-3 text-center text-gray-400">${stats.preguntas}</td>
+                                        <td class="p-3 text-center text-gray-400">✅ ${stats.aciertos}</td>
+                                        <td class="p-3 text-center font-bold ${colorClass}">${emoji} ${stats.porcentaje.toFixed(2)}%</td>
+                                        <td class="p-3 text-sm text-gray-500">${stats.ultimaVez || 'N/A'}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
             `;
 
             let modal = $(`
-                <div class="modal" tabindex="-1" role="dialog">
-                    <div class="modal-dialog modal-lg" role="document">
-                        <div class="modal-content bg-dark text-white">
-                            <div class="modal-header">
-                                <h5 class="modal-title">Estadísticas de ${juegoActual}</h5>
-                                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                            </div>
-                            <div class="modal-body">
-                                ${resultadosHTML}
-                            </div>
-                            <div class="modal-footer">
-                                <button id="borrar-estadisticas" class="btn btn-danger">Borrar Estadísticas</button>
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-                            </div>
+                <div class="fixed inset-0 z-50 flex items-center justify-center p-4" id="modal-estadisticas">
+                    <div class="fixed inset-0 bg-black bg-opacity-75 transition-opacity" id="modal-backdrop"></div>
+                    <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl z-10 flex flex-col max-h-[90vh] border border-gray-700 transform transition-all scale-100">
+                        <div class="p-5 border-b border-gray-700 flex justify-between items-center">
+                            <h5 class="text-xl font-bold text-white">📊 Estadísticas de ${juegoActual}</h5>
+                            <button type="button" class="text-gray-400 hover:text-white transition-colors text-2xl leading-none focus:outline-none" id="close-modal">
+                                &times;
+                            </button>
+                        </div>
+                        <div class="p-6 overflow-hidden flex-1">
+                            ${resultadosHTML}
+                        </div>
+                        <div class="p-5 border-t border-gray-700 flex justify-between">
+                            <button id="borrar-estadisticas" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors shadow-md">Borrar Todo</button>
+                            <button type="button" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition-colors shadow-md" id="btn-cerrar-modal">Cerrar</button>
                         </div>
                     </div>
                 </div>
             `);
+            
             $('body').append(modal);
-            modal.modal('show');
+            // Simple animation for showing
+            $('#modal-backdrop').hide().fadeIn(200);
+
+            const closeModal = () => {
+                 $('#modal-estadisticas').fadeOut(200, function() { $(this).remove(); });
+            };
+
+            $('#close-modal, #btn-cerrar-modal, #modal-backdrop').on('click', closeModal);
 
             $('#borrar-estadisticas').on('click', function () {
-                const claveStorage = `resultados_${juegoActual}`;
-                localStorage.removeItem(claveStorage);
-                resultados = [];
-                modal.modal('hide');
-                modal.remove();
+                if(confirm("¿Estás seguro de que quieres borrar todas las estadísticas de este juego?")) {
+                    const claveStorage = `resultados_${juegoActual}`;
+                    localStorage.removeItem(claveStorage);
+                    resultados = [];
+                    closeModal();
+                }
             });
         }
 
@@ -863,6 +1040,13 @@
                     $('#ver-estadisticas').on('click', function() {
                         mostrarEstadisticas();
                     });
+                    $('#btn-usuario').on('click', function() {
+                        mostrarAjustesUsuario();
+                    });
+                    // Actualizar el nombre en el botón si ya existe
+                    if (usuarioActual) {
+                        $('#nombre-usuario-display').text(usuarioActual);
+                    }
                 })
                 .catch(error => {
                     console.error('Error al cargar el juego:', error);
@@ -873,17 +1057,30 @@
     </script>
 </head>
 
-<body>
-    <a href="index.html" class="btn btn-light position-fixed" style="top: 20px; left: 20px; z-index: 1000;">
-        <i class="fas fa-home"></i>
+<body class="bg-gray-900 text-white min-h-screen font-sans flex flex-col p-4">
+    <a href="index.html" class="fixed top-4 left-4 z-40 bg-gray-800 hover:bg-gray-700 text-white p-3 rounded-full shadow-lg border border-gray-600 transition-colors flex items-center justify-center group" title="Volver al Inicio">
+        <i class="fas fa-home text-lg group-hover:scale-110 transition-transform"></i>
     </a>
-    <h1 id="titulo"></h1>
-    <div id="contenedor">
-        <!-- Aquí se insertarán dinámicamente la pregunta y el resultado -->
-    </div>
     
-    <p><div id="descripcion">Descripción del juego</div></p>
-    <button id="ver-estadisticas" class="btn btn-secondary mt-3">Ver Estadísticas</button>
+    <button id="btn-usuario" class="fixed top-4 right-4 z-40 bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg shadow-lg border border-gray-600 transition-colors flex items-center space-x-2 group" title="Ajustes de usuario">
+        <i class="fas fa-user text-lg"></i>
+        <span id="nombre-usuario-display">Usuario</span>
+    </button>
+    
+    <div class="container mx-auto max-w-2xl flex-grow flex flex-col items-center justify-start pt-16">
+        <header class="text-center mb-6 w-full">
+            <h1 id="titulo" class="text-3xl font-bold text-blue-400 mb-2"></h1>
+            <div id="descripcion" class="text-gray-400 text-sm"></div>
+        </header>
+
+        <div id="contenedor" class="w-full flex flex-col items-center">
+            <!-- Aquí se insertarán dinámicamente la pregunta y el resultado -->
+        </div>
+    </div>
+
+    <footer class="w-full text-center py-6 mt-auto">
+        <button id="ver-estadisticas" class="text-gray-400 hover:text-white underline text-sm transition-colors">📊 Ver Estadísticas</button>
+    </footer>
 </body>
 
 </html>
