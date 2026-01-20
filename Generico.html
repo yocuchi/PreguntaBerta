@@ -111,7 +111,7 @@
                         if (!configActualTablaPeriodica.preguntarValenciasComoSimbolo) {
                             preguntasJSON.forEach(elemento => {
                                 elemento.valenciasOriginales = elemento.valencias; // Guardar originales por si acaso
-                                elemento.valencias = [...new Set(elemento.valencias.replace(/[\\+\\-]/g, '').split(' '))].join(' ');
+                                elemento.valencias = [...new Set(elemento.valencias.replace(/[\\+\\-]/g, '').split(' ').map(v => v.trim()).filter(v => v.length > 0))].join(' ');
                             });
                             valenciasJuegoActual = [...new Set(valenciasJuegoActual.map(v => v.replace(/[\\+\\-]/g, '')))].sort((a,b) => parseInt(a) - parseInt(b));
                         }
@@ -387,7 +387,7 @@
                     if (preguntarVal) { // Solo procesar si se preguntan valencias
                         if (!configActualTablaPeriodica.preguntarValenciasComoSimbolo) { // Quitar signos
                             preguntasJSON.forEach(elemento => {
-                                elemento.valencias = [...new Set((elemento.valenciasOriginales || elemento.valencias).replace(/[\\+\\-]/g, '').split(' '))].join(' ');
+                                elemento.valencias = [...new Set((elemento.valenciasOriginales || elemento.valencias).replace(/[\\+\\-]/g, '').split(' ').map(v => v.trim()).filter(v => v.length > 0))].join(' ');
                             });
                             valenciasJuegoActual = [...new Set(todasLasValenciasPosibles.map(v => v.replace(/[\\+\\-]/g, '')))].sort((a,b) => parseInt(a) - parseInt(b));
                         } else { // Mantener/Restaurar signos
@@ -705,7 +705,7 @@
                 if (configActualTablaPeriodica.preguntarValencias) {
                     const valenciasCorrectasElemento = (configActualTablaPeriodica.preguntarValenciasComoSimbolo 
                                                     ? elemento.valenciasOriginales 
-                                                    : elemento.valencias).split(' ').map(v => v.toString());
+                                                    : elemento.valencias).split(' ').map(v => v.trim()).filter(v => v.length > 0).map(v => v.toString());
                     
                     const valenciasUsuarioArray = Array.isArray(valRes) ? valRes : (valRes ? [valRes.toString()] : []);
 

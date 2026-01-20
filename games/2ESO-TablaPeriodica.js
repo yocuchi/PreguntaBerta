@@ -23,14 +23,14 @@ const elementosOriginal = [
     { "nombre": "Plomo", "columna": "Carbonoideos", "valencias": "+2 +4", "signo": "Pb" },
     { "nombre": "Nitrógeno", "columna": "Nitrogenoideos", "valencias": "-1 +1 -3 +3 -5 +5", "signo": "N" },
     { "nombre": "Fósforo", "columna": "Nitrogenoideos", "valencias": "-3 +3 +5", "signo": "P" },
-    { "nombre": "Arsénico", "columna": "Nitrogenoideos", "valencias": "-3+3 +5", "signo": "As" },
-    { "nombre": "Antimonio", "columna": "Nitrogenoideos", "valencias": "-3+3 +5", "signo": "Sb" },
+    { "nombre": "Arsénico", "columna": "Nitrogenoideos", "valencias": "-3 +3 +5", "signo": "As" },
+    { "nombre": "Antimonio", "columna": "Nitrogenoideos", "valencias": "-3 +3 +5", "signo": "Sb" },
     { "nombre": "Bismuto", "columna": "Nitrogenoideos", "valencias": "+3 +5", "signo": "Bi" },
     { "nombre": "Oxígeno", "columna": "Anfígenos", "valencias": "-2", "signo": "O" },
     { "nombre": "Azufre", "columna": "Anfígenos", "valencias": "-2 +2 +4 +6", "signo": "S" },
-    { "nombre": "Selenio", "columna": "Anfígenos", "valencias": "-2+2 +4 +6", "signo": "Se" },
-    { "nombre": "Telurio", "columna": "Anfígenos", "valencias": "-2+2 +4 +6", "signo": "Te" },
-    { "nombre": "Polonio", "columna": "Anfígenos", "valencias": "-2+2 +4 +6", "signo": "Po" },
+    { "nombre": "Selenio", "columna": "Anfígenos", "valencias": "-2 +2 +4 +6", "signo": "Se" },
+    { "nombre": "Telurio", "columna": "Anfígenos", "valencias": "-2 +2 +4 +6", "signo": "Te" },
+    { "nombre": "Polonio", "columna": "Anfígenos", "valencias": "-2 +2 +4 +6", "signo": "Po" },
     { "nombre": "Flúor", "columna": "Halógenos", "valencias": "-1", "signo": "F" },
     { "nombre": "Cloro", "columna": "Halógenos", "valencias": "-1 +1 +3 +5 +7", "signo": "Cl" },
     { "nombre": "Bromo", "columna": "Halógenos", "valencias": "-1 +1 +3 +5 +7", "signo": "Br" },
@@ -86,7 +86,12 @@ const columnasDisponibles = [...new Set(preguntasJSON.map(elemento => elemento.c
 
 // Obtener todas las valencias posibles (con signo) y ordenarlas numéricamente donde sea posible
 const todasLasValenciasPosibles = [...new Set(
-    preguntasJSON.flatMap(elem => elem.valencias.split(' '))
+    preguntasJSON.flatMap(elem => 
+        elem.valencias
+            .split(' ')
+            .map(v => v.trim()) // Eliminar espacios al inicio y final
+            .filter(v => v.length > 0 && /^[+-]?\d+$/.test(v)) // Filtrar vacíos y validar formato (opcional + o -, seguido de dígitos)
+    )
 )]
 .sort((a, b) => {
     const numA = parseInt(a.replace(/[+-]/g, ''));
