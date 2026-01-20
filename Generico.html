@@ -28,6 +28,54 @@
          Logic relies on $().modal(), which is Bootstrap. I need to replace modal logic. 
          I will remove Bootstrap JS and implement a simple custom modal function. -->
     <!-- <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script> -->
+    
+    <style>
+        .star {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            border-radius: 50%;
+            animation: starFade 1.5s ease-out forwards;
+        }
+        
+        @keyframes starFade {
+            0% {
+                opacity: 1;
+                transform: scale(0) translateY(0);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1) translateY(-20px);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.5) translateY(-40px);
+            }
+        }
+        
+        .star-trail {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9998;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(147, 197, 253, 0.6) 50%, rgba(139, 92, 246, 0.3) 100%);
+            box-shadow: 0 0 10px rgba(147, 197, 253, 0.8), 0 0 20px rgba(139, 92, 246, 0.5);
+            animation: trailFade 0.8s ease-out forwards;
+        }
+        
+        @keyframes trailFade {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.3);
+            }
+        }
+    </style>
 
     <script>
         // Cargar el juego dinámicamente basado en el querystring
@@ -1055,9 +1103,100 @@
                 });
         };
     </script>
+    
+    <script>
+        // Efecto de estrellas que siguen el cursor
+        let mouseX = 0;
+        let mouseY = 0;
+        let lastStarTime = 0;
+        const starInterval = 50; // Milisegundos entre estrellas
+        
+        // Función para crear una estrella
+        function createStar(x, y, isMain = false) {
+            const container = document.getElementById('stars-container');
+            if (!container) return; // Asegurarse de que el contenedor existe
+            
+            const star = document.createElement('div');
+            
+            if (isMain) {
+                // Estrella principal más grande
+                const size = Math.random() * 8 + 6;
+                star.className = 'star';
+                star.style.width = size + 'px';
+                star.style.height = size + 'px';
+                star.style.left = x - size / 2 + 'px';
+                star.style.top = y - size / 2 + 'px';
+                star.style.background = `radial-gradient(circle, 
+                    rgba(255, 255, 255, 0.9) 0%, 
+                    rgba(147, 197, 253, 0.7) 40%, 
+                    rgba(139, 92, 246, 0.5) 70%, 
+                    transparent 100%)`;
+                star.style.boxShadow = `0 0 ${size * 2}px rgba(147, 197, 253, 0.8), 
+                    0 0 ${size * 3}px rgba(139, 92, 246, 0.6)`;
+            } else {
+                // Estrella pequeña de rastro
+                star.className = 'star-trail';
+                star.style.left = x - 2 + 'px';
+                star.style.top = y - 2 + 'px';
+            }
+            
+            container.appendChild(star);
+            
+            // Eliminar la estrella después de la animación
+            setTimeout(() => {
+                if (star.parentNode) {
+                    star.parentNode.removeChild(star);
+                }
+            }, 1500);
+        }
+        
+        // Seguir el movimiento del ratón
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            
+            const currentTime = Date.now();
+            
+            // Crear estrella principal cada cierto intervalo
+            if (currentTime - lastStarTime > starInterval) {
+                createStar(mouseX, mouseY, true);
+                lastStarTime = currentTime;
+            }
+            
+            // Crear pequeñas estrellas de rastro más frecuentemente
+            if (Math.random() > 0.7) {
+                createStar(
+                    mouseX + (Math.random() - 0.5) * 20,
+                    mouseY + (Math.random() - 0.5) * 20,
+                    false
+                );
+            }
+        });
+        
+        // Crear estrellas adicionales cuando el ratón se detiene
+        let mouseStopTimer;
+        document.addEventListener('mousemove', () => {
+            clearTimeout(mouseStopTimer);
+            mouseStopTimer = setTimeout(() => {
+                // Crear algunas estrellas finales cuando el ratón se detiene
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        createStar(
+                            mouseX + (Math.random() - 0.5) * 30,
+                            mouseY + (Math.random() - 0.5) * 30,
+                            Math.random() > 0.5
+                        );
+                    }, i * 100);
+                }
+            }, 200);
+        });
+    </script>
 </head>
 
 <body class="bg-gray-900 text-white min-h-screen font-sans flex flex-col p-4">
+    <!-- Contenedor para las estrellas del cursor -->
+    <div id="stars-container"></div>
+    
     <a href="index.html" class="fixed top-4 left-4 z-40 bg-gray-800 hover:bg-gray-700 text-white p-3 rounded-full shadow-lg border border-gray-600 transition-colors flex items-center justify-center group" title="Volver al Inicio">
         <i class="fas fa-home text-lg group-hover:scale-110 transition-transform"></i>
     </a>
