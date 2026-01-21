@@ -21,9 +21,12 @@ if (typeof getCookie === 'undefined') {
         return "";
     }
 
-    function setCookie(nombre, valor) {
-        // Cookie sin fecha de expiración (persistente hasta que se borre manualmente)
-        document.cookie = `${nombre}=${valor}; path=/; SameSite=Lax`;
+    function setCookie(nombre, valor, dias = 365) {
+        // Cookie con fecha de expiración para persistencia
+        const fecha = new Date();
+        fecha.setTime(fecha.getTime() + (dias * 24 * 60 * 60 * 1000));
+        const expira = "expires=" + fecha.toUTCString();
+        document.cookie = `${nombre}=${valor}; ${expira}; path=/; SameSite=Lax`;
     }
 }
 

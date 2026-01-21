@@ -180,9 +180,12 @@
             return "";
         }
 
-        function setCookie(nombre, valor) {
-            // Cookie sin fecha de expiración (persistente hasta que se borre manualmente)
-            document.cookie = `${nombre}=${valor}; path=/; SameSite=Lax`;
+        function setCookie(nombre, valor, dias = 365) {
+            // Cookie con fecha de expiración para persistencia
+            const fecha = new Date();
+            fecha.setTime(fecha.getTime() + (dias * 24 * 60 * 60 * 1000));
+            const expira = "expires=" + fecha.toUTCString();
+            document.cookie = `${nombre}=${valor}; ${expira}; path=/; SameSite=Lax`;
         }
 
         // Cargar usuario desde cookie
@@ -264,7 +267,7 @@
             // Establecer título inicial sin contador de preguntas
             document.title = `Quiz - ${usuarioActual}`;
             $('h1#titulo').text(`Bienvenido ${usuarioActual}`);
-            $('#nombre-usuario-display').text(usuarioActual);
+            actualizarFotoUsuario();
         }
 
         function preguntarNombre() {
@@ -923,16 +926,74 @@
         }
 
         function mostrarAjustesUsuario() {
+            // Calcular estadísticas globales de todos los juegos
+            let estadisticasGlobales = calcularEstadisticasGlobales();
+            
+            // Generar HTML de estadísticas por juego
+            let estadisticasPorJuegoHTML = estadisticasGlobales.juegoIndividuales.length > 0 ? `
+                <div class="mb-6">
+                    <h4 class="text-lg font-bold text-blue-300 mb-3">📊 Estadísticas por Juego</h4>
+                    <div class="space-y-2 max-h-64 overflow-y-auto">
+                        ${estadisticasGlobales.juegoIndividuales.map(juego => `
+                            <div class="bg-gray-700 rounded-lg p-3 border border-gray-600">
+                                <div class="font-semibold text-white mb-1">${juego.nombre}</div>
+                                <div class="grid grid-cols-3 gap-2 text-sm text-gray-300">
+                                    <div>
+                                        <span class="text-gray-400">Partidas:</span>
+                                        <span class="font-bold text-blue-400">${juego.partidas}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-400">Media:</span>
+                                        <span class="font-bold ${juego.notaMedia >= 70 ? 'text-green-400' : juego.notaMedia >= 50 ? 'text-yellow-400' : 'text-red-400'}">${juego.notaMedia.toFixed(1)}%</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-400">Máxima:</span>
+                                        <span class="font-bold text-green-400">${juego.notaMaxima.toFixed(1)}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : '<div class="mb-6 text-center text-gray-400">No hay estadísticas disponibles aún.</div>';
+            
+            // Obtener estado actual de la estela
+            let estelaHabilitada = localStorage.getItem('estelaHabilitada') !== 'false'; // Por defecto true
+            
+            // Obtener foto del usuario
+            let fotoUsuario = localStorage.getItem('fotoUsuario') || '';
+            
+            // Obtener colores del degradado
+            let colores = obtenerColoresDegradado();
+            
             const modal = $(`
                 <div class="fixed inset-0 z-50 flex items-center justify-center p-4" id="modal-ajustes">
                     <div class="fixed inset-0 bg-black bg-opacity-75 transition-opacity" id="modal-ajustes-backdrop"></div>
-                    <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-md z-10 border border-gray-700 transform transition-all">
+                    <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl z-10 border border-gray-700 transform transition-all max-h-[90vh] overflow-y-auto">
                         <div class="p-6">
                             <div class="flex justify-between items-center mb-6">
-                                <h3 class="text-2xl font-bold text-white">Ajustes de Usuario</h3>
+                                <h3 class="text-2xl font-bold text-white">⚙️ Ajustes de Usuario</h3>
                                 <button type="button" class="text-gray-400 hover:text-white transition-colors text-2xl leading-none focus:outline-none" id="cerrar-ajustes">
                                     &times;
                                 </button>
+                            </div>
+                            
+                            <div class="mb-6">
+                                <label class="block text-gray-300 mb-2 font-medium">Foto de perfil:</label>
+                                <div class="flex items-center space-x-4">
+                                    <div class="relative">
+                                        <div id="preview-foto" class="w-20 h-20 rounded-full bg-gray-700 border-2 border-gray-600 flex items-center justify-center overflow-hidden">
+                                            ${fotoUsuario ? `<img src="${fotoUsuario}" class="w-full h-full object-cover" alt="Foto de usuario">` : '<i class="fas fa-user text-3xl text-gray-500"></i>'}
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <input type="file" id="input-foto-usuario" accept="image/*" class="hidden">
+                                        <button id="btn-seleccionar-foto" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-lg mr-2">
+                                            📷 Seleccionar Foto
+                                        </button>
+                                        ${fotoUsuario ? '<button id="btn-eliminar-foto" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-lg">🗑️ Eliminar</button>' : ''}
+                                    </div>
+                                </div>
                             </div>
                             
                             <div class="mb-6">
@@ -942,6 +1003,77 @@
                                     <button id="btn-guardar-nombre" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-lg">
                                         Guardar
                                     </button>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-6 pt-4 border-t border-gray-700">
+                                <h4 class="text-lg font-bold text-blue-300 mb-3">🎯 Estadísticas Globales</h4>
+                                <div class="grid grid-cols-2 gap-4 mb-4">
+                                    <div class="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                                        <div class="text-gray-400 text-sm mb-1">Total de Partidas</div>
+                                        <div class="text-2xl font-bold text-blue-400">${estadisticasGlobales.totalPartidas}</div>
+                                    </div>
+                                    <div class="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                                        <div class="text-gray-400 text-sm mb-1">Nota Media Global</div>
+                                        <div class="text-2xl font-bold ${estadisticasGlobales.notaMediaGlobal >= 70 ? 'text-green-400' : estadisticasGlobales.notaMediaGlobal >= 50 ? 'text-yellow-400' : 'text-red-400'}">
+                                            ${estadisticasGlobales.notaMediaGlobal.toFixed(1)}%
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-6 pt-4 border-t border-gray-700">
+                                ${estadisticasPorJuegoHTML}
+                            </div>
+                            
+                            <div class="mb-6 pt-4 border-t border-gray-700">
+                                <h4 class="text-lg font-bold text-blue-300 mb-3">🎨 Preferencias</h4>
+                                
+                                <label class="flex items-center space-x-3 cursor-pointer bg-gray-700 p-4 rounded-lg border border-gray-600 hover:bg-gray-600 transition-colors mb-4">
+                                    <input type="checkbox" id="checkbox-estela" ${estelaHabilitada ? 'checked' : ''} class="h-5 w-5 rounded bg-gray-800 border-gray-600 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer">
+                                    <div class="flex-1">
+                                        <div class="text-white font-medium">⭐ Estela del ratón con estrellas</div>
+                                        <div class="text-gray-400 text-sm">Habilitar o deshabilitar el efecto de estrellas siguiendo el cursor</div>
+                                    </div>
+                                </label>
+                                
+                                <div class="bg-gray-700 p-4 rounded-lg border border-gray-600">
+                                    <div class="text-white font-medium mb-3">🎨 Colores del Degradado de Fondo</div>
+                                    <div class="text-gray-400 text-xs mb-3">Selecciona hasta 6 colores para personalizar el degradado de la aplicación</div>
+                                    <div class="grid grid-cols-3 gap-3">
+                                        <div>
+                                            <label class="block text-gray-400 text-xs mb-1">Color 1</label>
+                                            <input type="color" id="color1" value="${colores[0]}" class="w-full h-10 rounded cursor-pointer bg-gray-900 border border-gray-600">
+                                        </div>
+                                        <div>
+                                            <label class="block text-gray-400 text-xs mb-1">Color 2</label>
+                                            <input type="color" id="color2" value="${colores[1]}" class="w-full h-10 rounded cursor-pointer bg-gray-900 border border-gray-600">
+                                        </div>
+                                        <div>
+                                            <label class="block text-gray-400 text-xs mb-1">Color 3</label>
+                                            <input type="color" id="color3" value="${colores[2]}" class="w-full h-10 rounded cursor-pointer bg-gray-900 border border-gray-600">
+                                        </div>
+                                        <div>
+                                            <label class="block text-gray-400 text-xs mb-1">Color 4</label>
+                                            <input type="color" id="color4" value="${colores[3]}" class="w-full h-10 rounded cursor-pointer bg-gray-900 border border-gray-600">
+                                        </div>
+                                        <div>
+                                            <label class="block text-gray-400 text-xs mb-1">Color 5</label>
+                                            <input type="color" id="color5" value="${colores[4]}" class="w-full h-10 rounded cursor-pointer bg-gray-900 border border-gray-600">
+                                        </div>
+                                        <div>
+                                            <label class="block text-gray-400 text-xs mb-1">Color 6</label>
+                                            <input type="color" id="color6" value="${colores[5]}" class="w-full h-10 rounded cursor-pointer bg-gray-900 border border-gray-600">
+                                        </div>
+                                    </div>
+                                    <div class="mt-3 flex space-x-2">
+                                        <button id="btn-aplicar-colores" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-lg">
+                                            Aplicar Colores
+                                        </button>
+                                        <button id="btn-restaurar-colores" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">
+                                            Restaurar
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -983,7 +1115,161 @@
                 }
             });
             
+            // Manejar cambio de checkbox de estela
+            $('#checkbox-estela').on('change', function() {
+                const habilitada = $(this).is(':checked');
+                localStorage.setItem('estelaHabilitada', habilitada);
+                window.estelaHabilitada = habilitada;
+            });
+            
+            // Manejar selección de foto
+            $('#btn-seleccionar-foto').on('click', function() {
+                $('#input-foto-usuario').click();
+            });
+            
+            $('#input-foto-usuario').on('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.size > 2 * 1024 * 1024) { // Límite de 2MB
+                        alert('La imagen es demasiado grande. Por favor, selecciona una imagen menor a 2MB.');
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const imagenBase64 = event.target.result;
+                        localStorage.setItem('fotoUsuario', imagenBase64);
+                        $('#preview-foto').html(`<img src="${imagenBase64}" class="w-full h-full object-cover" alt="Foto de usuario">`);
+                        actualizarFotoUsuario();
+                        // Añadir botón eliminar si no existe
+                        if (!$('#btn-eliminar-foto').length) {
+                            $('#btn-seleccionar-foto').after('<button id="btn-eliminar-foto" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-lg ml-2">🗑️ Eliminar</button>');
+                            $('#btn-eliminar-foto').on('click', eliminarFotoUsuario);
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            // Manejar eliminación de foto
+            $('#btn-eliminar-foto').on('click', eliminarFotoUsuario);
+            
+            function eliminarFotoUsuario() {
+                localStorage.removeItem('fotoUsuario');
+                $('#preview-foto').html('<i class="fas fa-user text-3xl text-gray-500"></i>');
+                $('#btn-eliminar-foto').remove();
+                actualizarFotoUsuario();
+            }
+            
+            // Manejar aplicación de colores
+            $('#btn-aplicar-colores').on('click', function() {
+                const colores = [
+                    $('#color1').val(),
+                    $('#color2').val(),
+                    $('#color3').val(),
+                    $('#color4').val(),
+                    $('#color5').val(),
+                    $('#color6').val()
+                ];
+                guardarColoresDegradado(colores);
+                aplicarDegradado(colores);
+            });
+            
+            // Restaurar colores por defecto
+            $('#btn-restaurar-colores').on('click', function() {
+                const coloresDefecto = ['#1e3a8a', '#3b82f6', '#60a5fa', '#8b5cf6', '#a78bfa', '#1e3a8a'];
+                $('#color1').val(coloresDefecto[0]);
+                $('#color2').val(coloresDefecto[1]);
+                $('#color3').val(coloresDefecto[2]);
+                $('#color4').val(coloresDefecto[3]);
+                $('#color5').val(coloresDefecto[4]);
+                $('#color6').val(coloresDefecto[5]);
+                guardarColoresDegradado(coloresDefecto);
+                aplicarDegradado(coloresDefecto);
+            });
+            
             $('#cerrar-ajustes, #btn-cerrar-ajustes, #modal-ajustes-backdrop').on('click', cerrarModal);
+        }
+        
+        function calcularEstadisticasGlobales() {
+            let totalPartidas = 0;
+            let sumaNotas = 0;
+            let juegoIndividuales = [];
+            
+            // Obtener todos los juegos guardados en localStorage
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('resultados_')) {
+                    const nombreJuego = key.replace('resultados_', '');
+                    const resultadosJuego = JSON.parse(localStorage.getItem(key)) || [];
+                    
+                    if (resultadosJuego.length > 0) {
+                        // Calcular estadísticas por juego
+                        let totalPreguntasJuego = 0;
+                        let totalAciertosJuego = 0;
+                        let notaMaxima = 0;
+                        
+                        resultadosJuego.forEach(r => {
+                            totalPreguntasJuego += r.preguntas || 0;
+                            totalAciertosJuego += r.aciertos || 0;
+                            if (r.porcentaje > notaMaxima) {
+                                notaMaxima = r.porcentaje;
+                            }
+                        });
+                        
+                        const notaMedia = totalPreguntasJuego > 0 ? (totalAciertosJuego / totalPreguntasJuego) * 100 : 0;
+                        
+                        juegoIndividuales.push({
+                            nombre: nombreJuego,
+                            partidas: totalPreguntasJuego,
+                            notaMedia: notaMedia,
+                            notaMaxima: notaMaxima
+                        });
+                        
+                        totalPartidas += totalPreguntasJuego;
+                        sumaNotas += totalAciertosJuego;
+                    }
+                }
+            }
+            
+            const notaMediaGlobal = totalPartidas > 0 ? (sumaNotas / totalPartidas) * 100 : 0;
+            
+            return {
+                totalPartidas: totalPartidas,
+                notaMediaGlobal: notaMediaGlobal,
+                juegoIndividuales: juegoIndividuales.sort((a, b) => b.partidas - a.partidas) // Ordenar por número de partidas
+            };
+        }
+        
+        function obtenerColoresDegradado() {
+            const coloresGuardados = localStorage.getItem('coloresDegradado');
+            if (coloresGuardados) {
+                return JSON.parse(coloresGuardados);
+            }
+            // Colores por defecto
+            return ['#1e3a8a', '#3b82f6', '#60a5fa', '#8b5cf6', '#a78bfa', '#1e3a8a'];
+        }
+        
+        function guardarColoresDegradado(colores) {
+            localStorage.setItem('coloresDegradado', JSON.stringify(colores));
+        }
+        
+        function aplicarDegradado(colores) {
+            const gradiente = `linear-gradient(-45deg, ${colores.join(', ')})`;
+            $('body').css({
+                'background': gradiente,
+                'background-size': '400% 400%',
+                'background-attachment': 'fixed'
+            });
+        }
+        
+        function actualizarFotoUsuario() {
+            const foto = localStorage.getItem('fotoUsuario');
+            const displayElement = $('#nombre-usuario-display');
+            if (foto) {
+                displayElement.html(`<img src="${foto}" class="w-6 h-6 rounded-full object-cover mr-2" alt="Foto"><span>${usuarioActual}</span>`);
+            } else {
+                displayElement.html(`<i class="fas fa-user mr-2"></i><span>${usuarioActual}</span>`);
+            }
         }
 
         function mostrarEstadisticas() {
@@ -1081,6 +1367,10 @@
         }
 
         window.onload = function() {
+            // Aplicar colores del degradado guardados
+            const coloresGuardados = obtenerColoresDegradado();
+            aplicarDegradado(coloresGuardados);
+            
             cargarJuego()
                 .then(() => {
                     resultados = cargarResultados();
@@ -1091,9 +1381,9 @@
                     $('#btn-usuario').on('click', function() {
                         mostrarAjustesUsuario();
                     });
-                    // Actualizar el nombre en el botón si ya existe
+                    // Actualizar el nombre y foto en el botón si ya existe
                     if (usuarioActual) {
-                        $('#nombre-usuario-display').text(usuarioActual);
+                        actualizarFotoUsuario();
                     }
                 })
                 .catch(error => {
@@ -1111,8 +1401,14 @@
         let lastStarTime = 0;
         const starInterval = 50; // Milisegundos entre estrellas
         
+        // Variable global para controlar si la estela está habilitada
+        window.estelaHabilitada = localStorage.getItem('estelaHabilitada') !== 'false'; // Por defecto true
+        
         // Función para crear una estrella
         function createStar(x, y, isMain = false) {
+            // Verificar si la estela está habilitada
+            if (!window.estelaHabilitada) return;
+            
             const container = document.getElementById('stars-container');
             if (!container) return; // Asegurarse de que el contenedor existe
             
@@ -1202,8 +1498,9 @@
     </a>
     
     <button id="btn-usuario" class="fixed top-4 right-4 z-40 bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg shadow-lg border border-gray-600 transition-colors flex items-center space-x-2 group" title="Ajustes de usuario">
-        <i class="fas fa-user text-lg"></i>
-        <span id="nombre-usuario-display">Usuario</span>
+        <span id="nombre-usuario-display" class="flex items-center">
+            <i class="fas fa-user mr-2"></i>Usuario
+        </span>
     </button>
     
     <div class="container mx-auto max-w-2xl flex-grow flex flex-col items-center justify-start pt-16">
@@ -1218,7 +1515,9 @@
     </div>
 
     <footer class="w-full text-center py-6 mt-auto">
-        <button id="ver-estadisticas" class="text-gray-400 hover:text-white underline text-sm transition-colors">📊 Ver Estadísticas</button>
+        <button id="ver-estadisticas" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-lg border border-purple-500 transform hover:scale-105">
+            📊 Ver Estadísticas
+        </button>
     </footer>
 </body>
 
