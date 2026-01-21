@@ -1,3 +1,21 @@
+// Funciones para manejar cookies
+function getCookie(nombre) {
+    let nombreCookie = `${nombre}=`;
+    let decodedCookie = decodeURIComponent(document.cookie);
+    let cookiesArray = decodedCookie.split(';');
+    for (let i = 0; i < cookiesArray.length; i++) {
+        let cookie = cookiesArray[i].trim();
+        if (cookie.indexOf(nombreCookie) === 0) {
+            return cookie.substring(nombreCookie.length, cookie.length);
+        }
+    }
+    return "";
+}
+
+function setCookie(nombre, valor) {
+    // Cookie sin fecha de expiración (persistente hasta que se borre manualmente)
+    document.cookie = `${nombre}=${valor}; path=/; SameSite=Lax`;
+}
 
 function seleccionarPalabra() {
 
@@ -112,18 +130,18 @@ function inicializarJuego() {
 
 function preguntarNombre() {
     try {
-        usuarioActual = sessionStorage.getItem('usuarioActual');
+        usuarioActual = getCookie('usuarioActual');
     } catch (error) {
         usuarioActual = null;
-        console.log("Error al acceder a sessionStorage:", error);
+        console.log("Error al acceder a cookies:", error);
     }
 
     if (!usuarioActual) {
         usuarioActual = prompt("Por favor, ingresa tu nombre:");
         try {
-            sessionStorage.setItem('usuarioActual', usuarioActual); // Guardar el nombre en sesión
+            setCookie('usuarioActual', usuarioActual); // Guardar el nombre en cookies
         } catch (error) {
-            console.log("Error al guardar en sessionStorage:", error);
+            console.log("Error al guardar en cookies:", error);
         }
     }
     mostrarConfiguracion();
@@ -136,7 +154,7 @@ function reiniciarJuego() {
     palabrasUsadas = [];
     resultados = []; // Reiniciar la tabla de resultados
     localStorage.removeItem(tituloJuego); // Borrar el cache
-    //sessionStorage.removeItem('usuarioActual'); // Borrar el nombre de usuario de sesión
+    // No borramos la cookie del usuario para mantenerlo entre sesiones
     $('#contenedor').empty(); // Limpiar el contenedor
     preguntarNombre(); // Volver a preguntar el nombre
 }
