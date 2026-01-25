@@ -19,8 +19,8 @@ const preguntasJSON = [
     { "nombre": "por la noche 🌙", "respuesta": "in the evening" },
     { "nombre": "por la noche 🌃", "respuesta": "at night" },
     { "nombre": "anochecer 🌆", "respuesta": "dusk" },
-    { "nombre": "mediodía ☀️", "respuesta": "noon" },
-    { "nombre": "mediodía ☀️", "respuesta": "midday" },
+    { "nombre": "mediodía (12 en punto) ☀️", "respuesta": "noon" },
+    { "nombre": "mediodía  aprox las 12☀️", "respuesta": "midday" },
     { "nombre": "medianoche 🌙", "respuesta": "midnight" },
     
     // Para decir la hora
