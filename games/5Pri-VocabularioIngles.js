@@ -50,6 +50,41 @@ const preguntasJSON = [
     { "nombre": "reventar 💥", "respuesta": "burst" },
     { "nombre": "asombroso ✨", "respuesta": "amazing" },
     
+    // Números del 1 al 10
+    { "nombre": "uno 1️⃣", "respuesta": "one" },
+    { "nombre": "dos 2️⃣", "respuesta": "two" },
+    { "nombre": "tres 3️⃣", "respuesta": "three" },
+    { "nombre": "cuatro 4️⃣", "respuesta": "four" },
+    { "nombre": "cinco 5️⃣", "respuesta": "five" },
+    { "nombre": "seis 6️⃣", "respuesta": "six" },
+    { "nombre": "siete 7️⃣", "respuesta": "seven" },
+    { "nombre": "ocho 8️⃣", "respuesta": "eight" },
+    { "nombre": "nueve 9️⃣", "respuesta": "nine" },
+    { "nombre": "diez 🔟", "respuesta": "ten" },
+
+    // Fechas: 1 de enero, 2 de febrero, ..., 12 de diciembre
+    { "nombre": "1 de enero 📅", "respuesta": "1st of January" },
+    { "nombre": "2 de febrero 📅", "respuesta": "2nd of February" },
+    { "nombre": "3 de marzo 📅", "respuesta": "3rd of March" },
+    { "nombre": "4 de abril 📅", "respuesta": "4th of April" },
+    { "nombre": "5 de mayo 📅", "respuesta": "5th of May" },
+    { "nombre": "6 de junio 📅", "respuesta": "6th of June" },
+    { "nombre": "7 de julio 📅", "respuesta": "7th of July" },
+    { "nombre": "8 de agosto 📅", "respuesta": "8th of August" },
+    { "nombre": "9 de septiembre 📅", "respuesta": "9th of September" },
+    { "nombre": "10 de octubre 📅", "respuesta": "10th of October" },
+    { "nombre": "11 de noviembre 📅", "respuesta": "11th of November" },
+    { "nombre": "12 de diciembre 📅", "respuesta": "12th of December" },
+    // Repaso rápido: años en inglés
+    { "nombre": "año 📅", "respuesta": "year" },
+    { "nombre": "1999 (año)", "respuesta": "nineteen ninety-nine" },
+    { "nombre": "2000 (año)", "respuesta": "two thousand" },
+    { "nombre": "2005 (año)", "respuesta": "two thousand and five" },
+    { "nombre": "2010 (año)", "respuesta": "two thousand and ten" },
+    { "nombre": "2024 (año)", "respuesta": "two thousand and twenty-four" },
+    { "nombre": "en el año 2023", "respuesta": "in (the year) 2023" },
+    { "nombre": "en 1990", "respuesta": "in 1990" },
+
     // Conjunciones, preposiciones y adverbios relacionados con el tiempo
     { "nombre": "mientras ⏳", "respuesta": "while" },
     { "nombre": "cuando ⏰", "respuesta": "when" },
@@ -57,9 +92,9 @@ const preguntasJSON = [
     { "nombre": "durante ⏱️", "respuesta": "for" }
 ];
 
-const tituloJuego = "Quiz de Vocabulario Inglés 5º ESO"; // Título del juego
+const tituloJuego = "Quiz de Vocabulario Inglés 5º Primaria"; // Título del juego
 const prefijoPregunta = "¿Cómo se dice "; // Prefijo de la pregunta 
 const sufijoPregunta = " en inglés?"; // Sufijo de la pregunta
-const curso = "5ºESO";
+const curso = "5º Primaria";
 const descripcion = "Preguntas de vocabulario de inglés - Unit 4: Time of our lives";
 const tipoJuego = "preguntas";
