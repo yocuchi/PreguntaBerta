@@ -188,6 +188,17 @@
             document.cookie = `${nombre}=${valor}; ${expira}; path=/; SameSite=Lax`;
         }
 
+        // Normaliza texto para comparar respuestas: quita tildes y colapsa espacios
+        function normalizarParaComparar(str) {
+            if (typeof str !== 'string') return '';
+            return str
+                .trim()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
         // Cargar usuario desde cookie
         let usuarioActual = getCookie("usuarioActual");
 
@@ -941,15 +952,18 @@
                 }
                 respuestaNormal = respuestaNormal.trim(); // Eliminar espacios al inicio y al final
 
+                let usuarioNorm = normalizarParaComparar(respuestaNormal);
+                let correctaNorm = normalizarParaComparar(palabra.respuesta || '');
+
                 if (esCaseSensitive) {
-                    if (respuestaNormal === palabra.respuesta.trim()) {
+                    if (usuarioNorm === correctaNorm) {
                         mensaje += `<span class="text-green-400 font-bold text-lg">✅ ¡Correcto! ${palabra.respuesta}</span>`;
                         esCorrectoGlobal = true;
                     } else {
                         mensaje += `<div class="text-red-400 font-bold mb-1">❌ Incorrecto: ${respuestaNormal || '(sin respuesta)'}</div><div class="text-gray-400">La respuesta correcta es <span class="text-green-400 font-bold">${palabra.respuesta}</span>.</div>`;
                     }
                 } else {
-                    if (respuestaNormal.toLowerCase() === palabra.respuesta.trim().toLowerCase()) {
+                    if (usuarioNorm.toLowerCase() === correctaNorm.toLowerCase()) {
                         mensaje += `<span class="text-green-400 font-bold text-lg">✅ ¡Correcto! ${palabra.respuesta}</span>`;
                         esCorrectoGlobal = true;
                     } else {
