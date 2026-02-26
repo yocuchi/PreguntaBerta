@@ -11,7 +11,7 @@ const preguntasJSON = [
     { "nombre": "Manoplas", "respuesta": "Mittens" },
     { "nombre": "Bolsillos", "respuesta": "Pockets" },
     { "nombre": "Invierno", "respuesta": "Winter" },
-    { "nombre": "Esquí", "respuesta": "Skiing" },
+   // { "nombre": "Esquí", "respuesta": "Skiing" },
     { "nombre": "Esquiar", "respuesta": "Skiing" },
     { "nombre": "Verano", "respuesta": "Summer" },
     { "nombre": "Patinaje sobre hielo", "respuesta": "Ice-skating" },
