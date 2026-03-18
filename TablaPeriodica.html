@@ -29,7 +29,7 @@
         let usuarioActual = getCookie("usuario");
         if (!usuarioActual) {
             usuarioActual = prompt("Ingrese su nombre de usuario:");
-            document.cookie = `usuario=${usuarioActual}; path=/; max-age=31536000`;
+            document.cookie = `usuario=${encodeURIComponent(usuarioActual)}; path=/; max-age=31536000; SameSite=Lax; Secure`;
         }
 
         let resultados = {};

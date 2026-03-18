@@ -1,0 +1,21 @@
+# ============================================
+# Seguridad - Auditoría VULN-01 y VULN-05
+# ============================================
+
+# VULN-01: Bloquear acceso al directorio .git (evitar exposición de repo, config, historial)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^\.git - [F,L]
+</IfModule>
+
+# VULN-05: Cabeceras de seguridad
+<IfModule mod_headers.c>
+    # Evitar clickjacking
+    Header set X-Frame-Options "SAMEORIGIN"
+    # Evitar MIME sniffing
+    Header set X-Content-Type-Options "nosniff"
+    # HSTS solo cuando se sirve por HTTPS (reduce downgrade attacks)
+    Header set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" env=HTTPS
+    # Content-Security-Policy: restringir orígenes de script/estilo (ajustar según CDNs usados)
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://code.jquery.com https://cdnjs.cloudflare.com https://stackpath.bootstrapcdn.com; style-src 'self' 'unsafe-inline' https://stackpath.bootstrapcdn.com https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'self';" env=HTTPS
+</IfModule>

@@ -17,7 +17,7 @@ function setCookie(nombre, valor, dias = 365) {
     const fecha = new Date();
     fecha.setTime(fecha.getTime() + (dias * 24 * 60 * 60 * 1000));
     const expira = "expires=" + fecha.toUTCString();
-    document.cookie = `${nombre}=${valor}; ${expira}; path=/; SameSite=Lax`;
+    document.cookie = `${nombre}=${encodeURIComponent(valor)}; ${expira}; path=/; SameSite=Lax; Secure`;
 }
 
 function seleccionarPalabra() {

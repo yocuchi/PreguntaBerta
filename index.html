@@ -266,7 +266,7 @@
             const fecha = new Date();
             fecha.setTime(fecha.getTime() + (dias * 24 * 60 * 60 * 1000));
             const expira = "expires=" + fecha.toUTCString();
-            document.cookie = `${nombre}=${valor}; ${expira}; path=/; SameSite=Lax`;
+            document.cookie = `${nombre}=${encodeURIComponent(valor)}; ${expira}; path=/; SameSite=Lax; Secure`;
         }
 
         // Cargar usuario desde cookie
@@ -658,7 +658,7 @@
                             <div class="mb-6">
                                 <label class="block text-gray-300 mb-2 font-medium">Nombre de usuario:</label>
                                 <div class="flex space-x-2">
-                                    <input type="text" id="input-cambiar-nombre" class="flex-1 bg-gray-900 border border-gray-600 rounded-lg p-3 text-white text-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" placeholder="Tu nombre" value="${usuarioActual || ''}">
+                                    <input type="text" id="input-cambiar-nombre" class="flex-1 bg-gray-900 border border-gray-600 rounded-lg p-3 text-white text-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" placeholder="Tu nombre" value="">
                                     <button id="btn-guardar-nombre" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-lg">
                                         Guardar
                                     </button>
@@ -747,8 +747,10 @@
             `;
             
             document.body.insertAdjacentHTML('beforeend', modalHTML);
-            document.getElementById('input-cambiar-nombre').focus();
-            document.getElementById('input-cambiar-nombre').select();
+            const inputNombre = document.getElementById('input-cambiar-nombre');
+            inputNombre.value = (usuarioActual || '').toString();
+            inputNombre.focus();
+            inputNombre.select();
             
             const cerrarModal = () => {
                 const modal = document.getElementById('modal-ajustes');
@@ -940,9 +942,11 @@
             const displayElement = document.getElementById('nombre-usuario-display-index');
             if (displayElement) {
                 if (foto) {
-                    displayElement.innerHTML = `<img src="${foto}" class="w-6 h-6 rounded-full object-cover mr-2" alt="Foto"><span>${usuarioActual}</span>`;
+                    displayElement.innerHTML = `<img src="${foto}" class="w-6 h-6 rounded-full object-cover mr-2" alt="Foto"><span></span>`;
+                    displayElement.querySelector('span').textContent = usuarioActual || '';
                 } else {
-                    displayElement.innerHTML = `<i class="fas fa-user mr-2"></i><span>${usuarioActual}</span>`;
+                    displayElement.innerHTML = `<i class="fas fa-user mr-2"></i><span></span>`;
+                    displayElement.querySelector('span').textContent = usuarioActual || '';
                 }
             }
         }

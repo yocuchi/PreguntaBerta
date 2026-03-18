@@ -1,4 +1,3 @@
-<!-- Start Generation Here -->
 <!DOCTYPE html>
 <html lang="es">
 
@@ -6,97 +5,394 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Estadísticas del Quiz</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script>
-        let db;
-        let request = indexedDB.open("ResultadosQuiz", 1);
-
-        request.onsuccess = function(event) {
-            db = event.target.result;
-            mostrarEstadisticas();
-        };
-
-        request.onerror = function(event) {
-            console.error("Error al abrir la base de datos:", event.target.error);
-        };
-
-        function mostrarEstadisticas() {
-            let transaction = db.transaction(["resultados"], "readonly");
-            let objectStore = transaction.objectStore("resultados");
-            let request = objectStore.getAll();
-
-            request.onsuccess = function(event) {
-                let resultados = event.target.result;
-                let contenedor = $('#contenedor');
-                contenedor.empty();
-
-                if (resultados.length > 0) {
-                    resultados.forEach(resultado => {
-                        contenedor.append(`
-                            <div class="card">
-                                <h5>${resultado.usuario}</h5>
-                                <p>Aciertos: ${resultado.aciertos}</p>
-                                <p>Fallos: ${resultado.fallos}</p>
-                            </div>
-                        `);
-                    });
-                } else {
-                    contenedor.append('<p>No hay estadísticas disponibles.</p>');
-                }
-            };
-        }
-
-        function resetearResultados() {
-            let transaction = db.transaction(["resultados"], "readwrite");
-            let objectStore = transaction.objectStore("resultados");
-            objectStore.clear(); // Elimina todos los resultados
-
-            transaction.onsuccess = function() {
-                mostrarEstadisticas(); // Actualiza la vista después de resetear
-            };
-
-            transaction.onerror = function(event) {
-                console.error("Error al resetear los resultados:", event.target.error);
-            };
-        }
-    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         body {
-            background-color: black;
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
+            background: linear-gradient(-45deg, #1e3a8a, #3b82f6, #60a5fa, #8b5cf6);
+            background-size: 400% 400%;
+            animation: gradientBg 15s ease infinite;
+            min-height: 100vh;
         }
 
-        .card {
-            background-color: #333;
-            border: 1px solid #ccc;
-            padding: 20px;
-            margin: 10px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            max-width: 400px;
-            width: 100%;
-            text-align: center;
+        @keyframes gradientBg {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
+
+        th.sortable { cursor: pointer; user-select: none; }
+        th.sortable:hover { background-color: rgba(255,255,255,0.15); }
+
+        th .sort-icon { margin-left: 6px; opacity: 0.4; font-size: 0.75rem; }
+        th.sort-asc .sort-icon::after { content: '▲'; opacity: 1; }
+        th.sort-desc .sort-icon::after { content: '▼'; opacity: 1; }
+        th:not(.sort-asc):not(.sort-desc) .sort-icon::after { content: '⇅'; }
+
+        .filter-input {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.25);
+            color: white;
+            border-radius: 6px;
+            padding: 4px 8px;
+            width: 100%;
+            font-size: 0.75rem;
+            margin-top: 4px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .filter-input::placeholder { color: rgba(255,255,255,0.4); }
+        .filter-input:focus { border-color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.15); }
+
+        .pct-bar-bg { background: rgba(255,255,255,0.15); border-radius: 4px; height: 8px; min-width: 60px; }
+        .pct-bar { height: 8px; border-radius: 4px; transition: width 0.4s; }
+
+        tbody tr:hover { background: rgba(255,255,255,0.07); }
+
+        .badge-pct {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
+        .badge-green  { background: rgba(34,197,94,0.25); color: #86efac; }
+        .badge-yellow { background: rgba(234,179,8,0.25); color: #fde047; }
+        .badge-red    { background: rgba(239,68,68,0.25); color: #fca5a5; }
     </style>
 </head>
 
-<body>
-    <h1>Estadísticas del Quiz</h1>
-    <div id="contenedor"></div>
-    <button class="btn btn-danger" onclick="resetearResultados()">Resetear Resultados</button>
+<body class="text-white font-sans">
+
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+
+        <!-- Cabecera -->
+        <div class="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-extrabold text-white drop-shadow-lg">
+                    📊 Estadísticas del Quiz
+                </h1>
+                <p class="text-blue-200 text-sm mt-1">Resultados guardados en este dispositivo</p>
+            </div>
+            <div class="flex gap-3">
+                <a href="index.html"
+                   class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-xl transition-colors shadow-lg flex items-center gap-2">
+                    <i class="fas fa-home"></i> Inicio
+                </a>
+                <button id="btn-resetear"
+                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-5 rounded-xl transition-colors shadow-lg flex items-center gap-2">
+                    <i class="fas fa-trash-alt"></i> Borrar todo
+                </button>
+            </div>
+        </div>
+
+        <!-- Resumen global -->
+        <div id="resumen" class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8"></div>
+
+        <!-- Barra de búsqueda global -->
+        <div class="mb-4">
+            <div class="relative">
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-blue-300"></i>
+                <input id="busqueda-global" type="text" placeholder="Buscar en toda la tabla…"
+                       class="w-full bg-white/10 border border-white/25 text-white rounded-xl pl-10 pr-4 py-3 outline-none focus:border-white/60 focus:bg-white/15 transition placeholder-blue-200 text-sm">
+            </div>
+        </div>
+
+        <!-- Selector de juego -->
+        <div class="mb-4 flex flex-wrap gap-2 items-center">
+            <span class="text-blue-200 text-sm font-semibold">Filtrar por juego:</span>
+            <select id="filtro-juego"
+                    class="bg-blue-900/80 border border-blue-400/50 text-white rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-300 transition">
+                <option value="">— Todos los juegos —</option>
+            </select>
+            <span id="contador-filas" class="ml-auto text-blue-200 text-sm"></span>
+        </div>
+
+        <!-- Tabla -->
+        <div class="overflow-x-auto rounded-2xl shadow-2xl border border-white/10">
+            <table class="w-full text-sm" id="tabla-stats">
+                <thead>
+                    <tr class="bg-blue-900/70 text-blue-100 uppercase tracking-wide text-xs">
+                        <th class="sortable px-4 py-3 text-left" data-col="juego">
+                            Juego <span class="sort-icon"></span>
+                            <input class="filter-input" type="text" placeholder="Filtrar…" data-filter="juego">
+                        </th>
+                        <th class="sortable px-4 py-3 text-left" data-col="palabra">
+                            Pregunta <span class="sort-icon"></span>
+                            <input class="filter-input" type="text" placeholder="Filtrar…" data-filter="palabra">
+                        </th>
+                        <th class="sortable px-4 py-3 text-left" data-col="respuesta">
+                            Última respuesta <span class="sort-icon"></span>
+                            <input class="filter-input" type="text" placeholder="Filtrar…" data-filter="respuesta">
+                        </th>
+                        <th class="sortable px-4 py-3 text-center" data-col="preguntas">
+                            Intentos <span class="sort-icon"></span>
+                        </th>
+                        <th class="sortable px-4 py-3 text-center" data-col="aciertos">
+                            Aciertos <span class="sort-icon"></span>
+                        </th>
+                        <th class="sortable px-4 py-3 text-center" data-col="porcentaje">
+                            % Acierto <span class="sort-icon"></span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="tbody" class="divide-y divide-white/10 bg-blue-950/50">
+                </tbody>
+            </table>
+        </div>
+
+        <p id="sin-datos" class="hidden text-center text-blue-200 py-16 text-lg">
+            No hay estadísticas disponibles. ¡Juega primero para ver tus resultados!
+        </p>
+
+    </div>
+
     <script>
-        $(document).ready(function() {
-            mostrarEstadisticas();
-        });
+        // ── Leer datos del localStorage ──────────────────────────────────────────
+        function cargarDatos() {
+            const filas = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const clave = localStorage.key(i);
+                if (!clave) continue;
+                // Ignorar claves de configuración conocidas
+                const clavesIgnoradas = ['estelaHabilitada', 'fotoUsuario', 'coloresDegradado'];
+                if (clavesIgnoradas.includes(clave)) continue;
+
+                let valor;
+                try { valor = JSON.parse(localStorage.getItem(clave)); } catch { continue; }
+
+                if (!Array.isArray(valor) || valor.length === 0) continue;
+                // Comprobar que el array tiene la forma esperada
+                if (typeof valor[0].palabra === 'undefined') continue;
+
+                valor.forEach(r => {
+                    filas.push({
+                        juego:     clave,
+                        palabra:   r.palabra    || '',
+                        respuesta: r.respuesta  || '',
+                        preguntas: r.preguntas  || 0,
+                        aciertos:  r.aciertos   || 0,
+                        porcentaje: typeof r.porcentaje === 'number' ? r.porcentaje : 0
+                    });
+                });
+            }
+            return filas;
+        }
+
+        // ── Estado de la tabla ────────────────────────────────────────────────────
+        let todasLasFils = [];
+        let filasFiltradas = [];
+        let sortCol = 'porcentaje';
+        let sortDir = -1; // -1 desc, 1 asc
+        const filtros = { juego: '', palabra: '', respuesta: '' };
+        let busquedaGlobal = '';
+        let filtroJuego = '';
+
+        // ── Renderizar resumen ────────────────────────────────────────────────────
+        function renderResumen(filas) {
+            const totalIntentos = filas.reduce((s, r) => s + r.preguntas, 0);
+            const totalAciertos = filas.reduce((s, r) => s + r.aciertos, 0);
+            const pctGlobal = totalIntentos > 0 ? (totalAciertos / totalIntentos * 100) : 0;
+            const juegosUnicos = new Set(filas.map(r => r.juego)).size;
+
+            const datos = [
+                { label: 'Preguntas distintas', valor: filas.length,      icono: '📝' },
+                { label: 'Total intentos',       valor: totalIntentos,    icono: '🎯' },
+                { label: 'Total aciertos',       valor: totalAciertos,    icono: '✅' },
+                { label: '% global',             valor: pctGlobal.toFixed(1) + '%', icono: '📈' },
+            ];
+
+            document.getElementById('resumen').innerHTML = datos.map(d => `
+                <div class="bg-blue-900/60 border border-white/10 rounded-2xl p-4 text-center shadow-lg">
+                    <div class="text-2xl mb-1">${d.icono}</div>
+                    <div class="text-2xl font-extrabold text-white">${d.valor}</div>
+                    <div class="text-blue-300 text-xs mt-1">${d.label}</div>
+                </div>
+            `).join('');
+        }
+
+        // ── Poblar selector de juego ──────────────────────────────────────────────
+        function poblarSelectorJuego(filas) {
+            const juegos = [...new Set(filas.map(r => r.juego))].sort();
+            const sel = document.getElementById('filtro-juego');
+            juegos.forEach(j => {
+                const opt = document.createElement('option');
+                opt.value = j;
+                opt.textContent = j;
+                sel.appendChild(opt);
+            });
+        }
+
+        // ── Filtrar ───────────────────────────────────────────────────────────────
+        function aplicarFiltros() {
+            filasFiltradas = todasLasFils.filter(r => {
+                if (filtroJuego && r.juego !== filtroJuego) return false;
+                if (filtros.juego    && !r.juego.toLowerCase().includes(filtros.juego.toLowerCase()))       return false;
+                if (filtros.palabra  && !r.palabra.toLowerCase().includes(filtros.palabra.toLowerCase()))   return false;
+                if (filtros.respuesta && !r.respuesta.toLowerCase().includes(filtros.respuesta.toLowerCase())) return false;
+                if (busquedaGlobal) {
+                    const q = busquedaGlobal.toLowerCase();
+                    const hayCoincidencia = [r.juego, r.palabra, r.respuesta].some(v => v.toLowerCase().includes(q));
+                    if (!hayCoincidencia) return false;
+                }
+                return true;
+            });
+            ordenar();
+        }
+
+        // ── Ordenar ───────────────────────────────────────────────────────────────
+        function ordenar() {
+            filasFiltradas.sort((a, b) => {
+                const va = a[sortCol];
+                const vb = b[sortCol];
+                if (typeof va === 'number') return sortDir * (va - vb);
+                return sortDir * va.localeCompare(vb, 'es', { sensitivity: 'base' });
+            });
+            renderTabla();
+        }
+
+        // ── Renderizar tabla ──────────────────────────────────────────────────────
+        function renderTabla() {
+            const tbody = document.getElementById('tbody');
+            tbody.innerHTML = '';
+
+            document.getElementById('contador-filas').textContent =
+                `${filasFiltradas.length} de ${todasLasFils.length} entradas`;
+
+            if (filasFiltradas.length === 0) {
+                const td = document.createElement('tr');
+                td.innerHTML = `<td colspan="6" class="text-center py-10 text-blue-300">No hay resultados para los filtros aplicados.</td>`;
+                tbody.appendChild(td);
+                return;
+            }
+
+            filasFiltradas.forEach(r => {
+                const pct = r.porcentaje;
+                const badgeClass = pct >= 70 ? 'badge-green' : pct >= 40 ? 'badge-yellow' : 'badge-red';
+                const barColor   = pct >= 70 ? '#4ade80'     : pct >= 40 ? '#facc15'      : '#f87171';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-4 py-3 text-blue-200 max-w-xs truncate" title="${esc(r.juego)}">${esc(r.juego)}</td>
+                    <td class="px-4 py-3 font-medium text-white">${esc(r.palabra)}</td>
+                    <td class="px-4 py-3 text-gray-300 italic">${esc(r.respuesta) || '<span class="text-gray-500">—</span>'}</td>
+                    <td class="px-4 py-3 text-center text-blue-200">${r.preguntas}</td>
+                    <td class="px-4 py-3 text-center text-green-300">${r.aciertos}</td>
+                    <td class="px-4 py-3 text-center">
+                        <div class="flex flex-col items-center gap-1">
+                            <span class="badge-pct ${badgeClass}">${pct.toFixed(1)}%</span>
+                            <div class="pct-bar-bg w-16">
+                                <div class="pct-bar" style="width:${Math.min(pct,100)}%; background:${barColor};"></div>
+                            </div>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function esc(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        // ── Actualizar iconos de ordenación ───────────────────────────────────────
+        function actualizarIconosSort() {
+            document.querySelectorAll('#tabla-stats th.sortable').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (th.dataset.col === sortCol) {
+                    th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+                }
+            });
+        }
+
+        // ── Inicializar eventos ───────────────────────────────────────────────────
+        function init() {
+            todasLasFils = cargarDatos();
+
+            if (todasLasFils.length === 0) {
+                document.getElementById('sin-datos').classList.remove('hidden');
+                document.querySelector('.overflow-x-auto').classList.add('hidden');
+                document.getElementById('resumen').innerHTML = '';
+                document.getElementById('busqueda-global').closest('.mb-4').classList.add('hidden');
+                document.getElementById('filtro-juego').closest('.mb-4').classList.add('hidden');
+                return;
+            }
+
+            renderResumen(todasLasFils);
+            poblarSelectorJuego(todasLasFils);
+            aplicarFiltros();
+            actualizarIconosSort();
+
+            // Clicks en cabeceras para ordenar
+            document.querySelectorAll('#tabla-stats th.sortable').forEach(th => {
+                th.addEventListener('click', e => {
+                    // No ordenar si el clic fue en el input de filtro
+                    if (e.target.tagName === 'INPUT') return;
+                    const col = th.dataset.col;
+                    if (sortCol === col) {
+                        sortDir *= -1;
+                    } else {
+                        sortCol = col;
+                        sortDir = col === 'porcentaje' || col === 'preguntas' || col === 'aciertos' ? -1 : 1;
+                    }
+                    actualizarIconosSort();
+                    ordenar();
+                });
+            });
+
+            // Inputs de filtro por columna
+            document.querySelectorAll('.filter-input').forEach(input => {
+                input.addEventListener('input', e => {
+                    e.stopPropagation();
+                    filtros[input.dataset.filter] = input.value;
+                    aplicarFiltros();
+                    actualizarIconosSort();
+                });
+                // Evitar que el clic en el input dispare el sort
+                input.addEventListener('click', e => e.stopPropagation());
+            });
+
+            // Búsqueda global
+            document.getElementById('busqueda-global').addEventListener('input', e => {
+                busquedaGlobal = e.target.value;
+                aplicarFiltros();
+                actualizarIconosSort();
+            });
+
+            // Selector de juego
+            document.getElementById('filtro-juego').addEventListener('change', e => {
+                filtroJuego = e.target.value;
+                aplicarFiltros();
+                actualizarIconosSort();
+            });
+
+            // Botón resetear
+            document.getElementById('btn-resetear').addEventListener('click', () => {
+                if (!confirm('¿Seguro que quieres borrar TODOS los resultados guardados? Esta acción no se puede deshacer.')) return;
+
+                const clavesIgnoradas = ['estelaHabilitada', 'fotoUsuario', 'coloresDegradado'];
+                const clavesABorrar = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const clave = localStorage.key(i);
+                    if (clave && !clavesIgnoradas.includes(clave)) {
+                        let val;
+                        try { val = JSON.parse(localStorage.getItem(clave)); } catch { continue; }
+                        if (Array.isArray(val) && val.length > 0 && typeof val[0].palabra !== 'undefined') {
+                            clavesABorrar.push(clave);
+                        }
+                    }
+                }
+                clavesABorrar.forEach(c => localStorage.removeItem(c));
+                location.reload();
+            });
+        }
+
+        init();
     </script>
 </body>
 
 </html>
-<!-- End Generation Here -->

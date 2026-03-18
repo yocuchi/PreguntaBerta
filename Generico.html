@@ -185,7 +185,7 @@
             const fecha = new Date();
             fecha.setTime(fecha.getTime() + (dias * 24 * 60 * 60 * 1000));
             const expira = "expires=" + fecha.toUTCString();
-            document.cookie = `${nombre}=${valor}; ${expira}; path=/; SameSite=Lax`;
+            document.cookie = `${nombre}=${encodeURIComponent(valor)}; ${expira}; path=/; SameSite=Lax; Secure`;
         }
 
         // Normaliza texto para comparar respuestas: quita tildes y colapsa espacios
@@ -1488,9 +1488,11 @@
             const foto = localStorage.getItem('fotoUsuario');
             const displayElement = $('#nombre-usuario-display');
             if (foto) {
-                displayElement.html(`<img src="${foto}" class="w-6 h-6 rounded-full object-cover mr-2" alt="Foto"><span>${usuarioActual}</span>`);
+                displayElement.html(`<img src="${foto}" class="w-6 h-6 rounded-full object-cover mr-2" alt="Foto"><span></span>`);
+                displayElement.find('span').text(usuarioActual || '');
             } else {
-                displayElement.html(`<i class="fas fa-user mr-2"></i><span>${usuarioActual}</span>`);
+                displayElement.html(`<i class="fas fa-user mr-2"></i><span></span>`);
+                displayElement.find('span').text(usuarioActual || '');
             }
         }
 
